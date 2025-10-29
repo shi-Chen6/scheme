@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>福建闪击战</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: The application is designed as a multi-tab single-page application (SPA) to provide a non-linear, user-driven experience. The structure includes: 1) A 'Pre-Trip Prep' landing page with interactive checklists, as this is the most critical first step for the user. 2) A 'Daily Itinerary' section with a day-selector to view interactive timelines, making the dense schedule easy to digest. 3) A 'Budget Overview' with a dynamic chart to provide a clear, visual breakdown of costs. 4) Filterable 'Destination' and 'Food' guides to allow users to look up specific information on-demand. This thematic structure is chosen over a linear one to empower the user to access the information they need, when they need it, enhancing usability and planning efficiency. -->
+    <!-- Visualization & Content Choices: 1) Pre-trip tasks -> Interactive Checklists (HTML/JS) -> Goal: Actionable planning -> Justification: More engaging and provides a sense of completion. 2) Daily schedule -> Vertical Timeline (HTML/CSS/JS) -> Goal: Clarify sequence of events -> Justification: Intuitive visualization for time-based data. 3) Cost data -> Donut Chart (Chart.js) -> Goal: Compare budget allocation -> Justification: Effectively shows proportions of total spending. 4) POIs/Food -> Filterable Card Grid (HTML/Tailwind/JS) -> Goal: Organize and allow quick lookup -> Justification: Provides fast, non-linear access to a large dataset. All interactions are designed to reveal more details on-demand, keeping the initial UI clean and uncluttered. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #f8fafc; }
+        .tab-active { border-color: #0d9488; color: #0d9488; background-color: #ccfbf1; }
+        .tab-inactive { border-color: transparent; color: #475569; }
+        .content-section { display: none; }
+        .content-active { display: block; }
+        .timeline-item::before { content: ''; position: absolute; left: -0.5rem; top: 0.5rem; width: 1rem; height: 1rem; background-color: #14b8a6; border-radius: 9999px; border: 2px solid #f0fdfa; }
+        .chart-container { position: relative; width: 100%; max-width: 450px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        img { width: 100%; height: auto; object-fit: cover; aspect-ratio: 16/9; border-radius: 0.5rem; }
+        @media (min-width: 768px) { 
+            .chart-container { height: 400px; }
+            img { aspect-ratio: 16/10; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6">
+        
+        <header class="text-center mb-6 md:mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-teal-700">福建闪击战</h1>
+            <p class="mt-2 text-slate-500 text-lg">这不仅仅是攻略，这是你的数字化作战指挥中心。</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8">
+            <button data-tab="prep" class="nav-tab text-sm md:text-base font-semibold py-2 px-4 rounded-full border-2 transition-all duration-300">
+                <span class="mr-2">✔️</span>战前部署
+            </button>
+            <button data-tab="itinerary" class="nav-tab text-sm md:text-base font-semibold py-2 px-4 rounded-full border-2 transition-all duration-300">
+                <span class="mr-2">🗓️</span>每日行动
+            </button>
+            <button data-tab="destinations" class="nav-tab text-sm md:text-base font-semibold py-2 px-4 rounded-full border-2 transition-all duration-300">
+                <span class="mr-2">🗺️</span>目标图鉴
+            </button>
+            <button data-tab="food" class="nav-tab text-sm md:text-base font-semibold py-2 px-4 rounded-full border-2 transition-all duration-300">
+                <span class="mr-2">🍜</span>美食清单
+            </button>
+            <!-- 预算速览按钮
+<button data-tab="budget" class="nav-tab text-sm md:text-base font-semibold py-2 px-4 rounded-full border-2 transition-all duration-300">
+    <span class="mr-2">💰</span>预算速览
+</button>
+-->
+            <button data-tab="guide" class="nav-tab text-sm md:text-base font-semibold py-2 px-4 rounded-full border-2 transition-all duration-300">
+                <span class="mr-2">👨‍🏫</span>导游介绍
+            </button>
+        </nav>
+
+        <main id="content-container">
+            <!-- 战前部署 -->
+            <section id="prep" class="content-section">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-1">战前部署：行动前置检查清单</h2>
+                    <p class="text-slate-500 mb-6">此环节是任务成功的基石。请逐项确认，确保万无一失。</p>
+                    <div id="prep-list" class="space-y-6"></div>
+                </div>
+            </section>
+
+            <!-- 每日行动 -->
+            <section id="itinerary" class="content-section">
+                 <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-1">每日行动：交互式时间线</h2>
+                    <p class="text-slate-500 mb-6">选择日期，查看图文并茂的作战计划。</p>
+                    <div id="day-selector" class="flex justify-center flex-wrap gap-2 mb-6"></div>
+                    <div id="timeline-container"></div>
+                </div>
+            </section>
+
+            <!-- 目标图鉴 -->
+            <section id="destinations" class="content-section">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-1">目标图鉴：景点速查</h2>
+                    <p class="text-slate-500 mb-6">快速查找本次行动的关键目标点，点击卡片查看详细情报。</p>
+                    <div id="dest-filter" class="flex justify-center flex-wrap gap-2 mb-6"></div>
+                    <div id="dest-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
+            </section>
+
+            <!-- 美食清单 -->
+            <section id="food" class="content-section">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-1">美食清单：战术补给点</h2>
+                    <p class="text-slate-500 mb-6">高效补充能量，品尝当地特色。</p>
+                    <div id="food-filter" class="flex justify-center flex-wrap gap-2 mb-6"></div>
+                    <div id="food-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+                </div>
+            </section>
+
+            <!-- 预算速览 -->
+            <section id="budget" class="content-section">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-1">预算速览：开销分析</h2>
+                    <p class="text-slate-500 mb-6">本次行动预估总开销及各项支出占比。将鼠标悬停在图表上可查看详细数额。</p>
+                    <div class="chart-container">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 导游介绍 -->
+            <section id="guide" class="content-section">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-1">导游介绍：您的专属向导</h2>
+                    <p class="text-slate-500 mb-6">让我来为您介绍这次旅程的专业导游。</p>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-48 h-48 rounded-full overflow-hidden shadow-lg">
+                            <img src="lin.jpg" alt="导游照片" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1 space-y-4">
+                            <h3 class="text-xl font-bold text-teal-700">黄哲鸿（专业导游）</h3>
+                            <div class="flex gap-2 flex-wrap">
+                                <span class="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm">10年导游经验</span>
+                                <span class="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm">福建文化专家</span>
+                                <span class="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm">摄影达人</span>
+                            </div>
+                            <p class="text-slate-600">从事导游工作10年，对福建的历史文化、美食特产都有深入研究。擅长为游客定制个性化行程，让每位游客都能体验最地道的福建风情。熟悉各个景点的最佳游览时间和拍摄角度，可以为您的旅程提供专业的建议和指导。</p>
+                            <div class="flex gap-4">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-teal-600">500+</div>
+                                    <div class="text-sm text-slate-500">带团次数</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-teal-600">4.9</div>
+                                    <div class="text-sm text-slate-500">用户评分</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-teal-600">98%</div>
+                                    <div class="text-sm text-slate-500">好评率</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const appData = {
+            prep: [
+                {
+                    title: '权限获取：数字战场',
+                    icon: '🎟️',
+                    items: [
+                        { text: '预订鼓浪屿船票 (“屿见厦门”小程序)', checked: false },
+                        { text: '预约厦门大学入校 (“厦门大学访客预约系统”)', checked: false },
+                        { text: '预订 厦门北 → 福州南 高铁票', checked: false },
+                        { text: '预订 福州南 → 平潭 高铁票', checked: false },
+                    ]
+                },
+                {
+                    title: '建立前线作战基地 (住宿)',
+                    icon: '🏨',
+                    items: [
+                        { text: '预订厦门住宿 (第1、2晚)', checked: false },
+                        { text: '预订平潭住宿 (第3晚，建议县城)', checked: false },
+                    ]
+                },
+                {
+                    title: '打卡机位',
+                    icon: '📸',
+                    items: [
+                    { "text": "宇宙有趣研究所（人较多，需要等）", checked: false },
+    { "text": "华新路33号（张万森家门口人是真多）", checked: false },
+    { "text": "做个闲人茶馆（有卡通葛优躺雕像）", checked: false },
+    { "text": "沙坡尾文化街（厦门老街独特的日式外墙，很好出片）", checked: false },
+    { "text": "鼓浪屿-最美转角（影视剧取景地，鼓浪屿其他景点都很出片）", checked: false },
+    { "text": "黄厝海滩（比较安静的，水质较好，晴天随便拍拍都好看）", checked: false },
+    { "text": "十里长堤（黄昏的十里长堤是真美，还会有乐队演奏，很有氛围）", checked: false },
+    { "text": "白城沙滩（可以和双子塔拍照，灯亮起来的时候真的很漂亮）", checked: false },
+    { "text": "中山路步行街（古典的欧式风格建筑夜景很美）", checked: false },
+    { "text": "“厦门”拍照墙（ANNAS RESTAURANT对面，直接导航）", checked: false },
+    { "text": "溪岸花鸟市场（鲜花可以让人心情美丽，也好出片）", checked: false }
+                    ]
+                },
+                {
+                    title: '行动人员工具包',
+                    icon: '🎒',
+                    items: [
+                        { text: '准备轻便背包、徒步鞋', checked: false },
+                        { text: '准备防晒霜、遮阳帽、太阳镜', checked: false },
+                        { text: '准备便携式充电宝、雨具', checked: false },
+                        { text: '安装高德/百度地图、铁路12306等App', checked: false },
+                    ]
+                },
+                {
+  "title": "厦门避雷指南",
+  "icon": "⚠️",
+  "items": [
+    { "text": "高铁出行选厦门站（在岛内）离景点近，厦门北站是岛外，可坐地铁1号线到市区", checked: false },
+    { "text": "厦门需提前预约的景点：鼓浪屿、钟鼓索道、南普陀、厦门大学、植物园、厦门科技馆、胡里山炮台", checked: false },
+    { "text": "钟鼓索道傍晚很美，俯瞰厦门全景（缆车无玻璃，冬天建议穿防风衣）", checked: false },
+    { "text": "鼓浪屿需提前订票（gzh“厦门轮渡”），旺季建议提前10-15天，晕船者请备药", checked: false },
+    { "text": "鼓浪屿五大景点：日光岩、菽庄花园、皓月园、八卦楼、国际刻字艺术馆，联票90元/人（gzh“屿见厦门”）也可单买", checked: false },
+    { "text": "植物园售票处可领免费地图，建议从西门进，离网红多肉植物区和雨林区近", checked: false },
+    { "text": "中山路适合拍照打卡，但网红店多、消费偏高，理性消费", checked: false },
+    { "text": "集美学村可乘地铁1号线至“集美学村”站，十里长堤看日落超美", checked: false },
+    { "text": "看日出推荐：黄厝海滩；看晚霞推荐：白城沙滩", checked: false }
+  ]
+},
+{
+  "title": "景点预约指南",
+  "icon": "📅",
+  "items": [
+    { "text": "厦门大学：gzh“厦门大学访客系统”（07:00-23:00，免费，提前3天预约）", checked: false },
+    { "text": "鼓浪屿：gzh“屿见厦门”（全天，35元，提前3天预约）", checked: false },
+    { "text": "南普陀寺：gzh“南普陀寺”（08:00-17:30，免费，提前1-4天预约）", checked: false },
+    { "text": "厦门植物园：gzh“厦门植物园商城”（06:30-17:30，30元，提前2天预约）", checked: false },
+    { "text": "钟鼓索道：gzh“钟鼓索道”（08:30-17:30，80元，提前10天预约）", checked: false },
+    { "text": "厦门科技馆：gzh“泉州市科技馆”（09:00-17:00，140元，提前1天预约，周一闭馆）", checked: false },
+    { "text": "双子塔：gzh“世茂云上厦门观光厅”（09:00-20:00，160元起，提前1天预约）", checked: false },
+    { "text": "海底世界：gzh“厦门海底世界”（08:00-12:00，198元，提前1-30天预约）", checked: false },
+    { "text": "胡里山炮台：gzh“胡里山炮台”（08:00-17:30，25元，提前1天预约）", checked: false },
+    { "text": "潮汐之眼：gzh“厦门本地宝”（10:00-22:00，98元，提前1天预约）", checked: false },
+    { "text": "以下景点无需预约：集美学村、沙坡尾、演武大桥、园博苑、黄厝海滩、白城沙滩、曾厝垵", checked: false }
+  ]
+}
+            ],
+            itinerary: [
+                {
+                    day: 1,
+                    date: '8月10日',
+                    title: '厦门：文化、海岸线与战略转移',
+                    dayImage: '11.jpg',
+                    events: [
+                         { time: '08:00-09:30', title: '厦门大学渗透', details: '凭预约入校。核心看点：芙蓉湖、建南大礼堂、芙蓉隧道。', img: 'https://b0.bdstatic.com/ugc/ekREfR5jH3ypTYxBMVYiLgd7686695d7ec8255ebe0ff0a89dab23f.jpg' },
+                        { time: '10:00-12:00', title: '南普陀寺', details: '紧邻厦大，免费开放，可先行游览。', img: 'https://img1.baidu.com/it/u=4209491105,1069951446&fm=253&fmt=auto&app=138&f=JPEG?w=800&h=1422' },
+                        { time: '13:00-15:00', title: '植物园（西门）', details: '植物自然人文', img: 'https://gips0.baidu.com/it/u=2417506657,2209122435&fm=3074&app=3074&f=JPEG?w=1080&h=1410&type=normal&func=' },
+                        { time: '15:30-17:00', title: '沙坡尾艺术西区', details: '历史避风坞与现代潮流文化交汇处，绝佳拍摄点。', img: 'https://pics2.baidu.com/feed/7acb0a46f21fbe0956abf5fced0c733c8544add8.jpeg@f_auto?token=3a237bc88d2a6ddb4a29d9661211875f' }
+                    ]
+                },
+                {
+                    day: 2,
+                    date: '8月11日',
+                    title: '厦门：岛屿征服与美食突袭',
+                    dayImage: '22.jpg',
+                    events: [
+                        { time: '10:00-16:00', title: '鼓浪屿全岛行动', details: '核心路线：日光岩 → 菽庄花园 → 皓月园 → 笔山洞。注意：全岛步行，做好体力储备。',img: 'https://pics5.baidu.com/feed/b3119313b07eca801a562799c807f3d2a1448334.jpeg@f_auto?token=fe9928e9bbaf8706ba312ce455aa057f'},
+                        { time: '10:00-16:00', title: '最美转角', details: '多部电影拍摄地', img: 'https://qcloud.dpfile.com/pc/k6PLvlQGsWnc7t5H_SgfC7Te7Qzh7YNAqgEqxVyspFvgYuV7mcAempDblxrj5XHP.jpg' },
+                        { time: '10:00-16:00', title: '皓月园角', details: '门票：10r。纪念郑成功收复台湾', img: 'https://youimg1.c-ctrip.com/target/fd/tg/g2/M05/EC/80/Cghzf1UAHMiASXTdAA2u-3kF9zg839.jpg' },
+                        { time: '10:00-16:00', title: '大德记浴场', details: '沙质细腻，对面就是双子踏', img: 'https://gips1.baidu.com/it/u=3755121750,2069257641&fm=3074&app=3074&f=JPEG' },
+                        { time: '10:00-16:00', title: '菽庄花园', details: '台湾商人林的花园', img: 'https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%27LV8xNzMzODc5MTIzLjcxNDczMQ%3D%3D%27/0.png?authorization=bce-auth-v1%2FALTAKmda7zOvhZVbRzBLewvCMU%2F2024-12-11T01%3A05%3A24Z%2F-1%2F%2Ff6f7eee16ff9d1083fc15492b5ef4a893368587dc4fd04edbce785a05fa37684' },
+                        { time: '10:00-16:00', title: '日光岩', details: '岛内最高峰', img: 'https://img2.baidu.com/it/u=2821876740,1101228647&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=586' },
+                    ]
+                },
+                {
+                    day: 3,
+                    date: '8月12日',
+                    title: '福州：古城核心闪击',
+                    dayImage: '33.jpg',
+                    events: [
+    {
+      time: '09:00-11:30',
+      title: '渗透三坊七巷',
+      details: '高优先级目标：林则徐、严复、冰心故居等明清古建群，被誉为“中国明清建筑博物馆”。战术补给点：同利肉燕、永和鱼丸。',
+      img: 'https://qcloud.dpfile.com/pc/PPdHeiFSQgjQQCYAEqgvOu3SqcoZLM22ieuR710wg9Ep4rvkTr6BfTsD8-EpmEVF.jpg'
+    },
+    {
+      time: '11:45-13:30',
+      title: '福建博物院',
+      details: '省级综合馆，17万件闽地文物，快速浏览闽越文化演进。',
+      img: 'https://bkimg.cdn.bcebos.com/pic/9c16fdfaaf51f3de8315c0ce9aeef01f3b2979f0'
+    },
+    {
+      time: '13:30-15:00',
+      title: '西湖公园',
+      details: '福州版“城市绿肺”，古典园林湖景，适合短暂休整。',
+      img: 'https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%27LV8xNzMxMDU4Nzg5LjQ4NzYxNDY%3D%27/0.png?authorization=bce-auth-v1%2FALTAKmda7zOvhZVbRzBLewvCMU%2F2024-11-08T09%3A39%3A50Z%2F-1%2F%2F9c23b13d576592067a2e34740d13da86099f2f5532e611a60d973cd4092f9574'
+    },
+    {
+      time: '15:05-16:30',
+      title: '左海公园',
+      details: '步行5分钟。摩天轮+海底世界，城市休闲侦察点。',
+      img: 'https://img.phb123.com/uploads/allimg/230706/820-230F6103R20-L.png'
+    },
+    {
+      time: '16:45-18:30',
+      title: '福道高空栈道',
+      details: '全国最长城市森林步道，悬空19公里，俯瞰福州全景。',
+      img: 'https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%27LV8xNzMxNTYxMjk3Ljg2OTAxOTU%3D%27/0.png'
+    },
+    {
+      time: '19:00-20:30',
+      title: '五一广场夜巡',
+      details: '市中心地标，国旗广场+音乐喷泉，感受福州夜生活。',
+        img: 'https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%27LV8xNzMxNTYxMjk3Ljg2OTAxOTU%3D%27/0.png'
+    }
+                    ]
+                },
+                {
+                    day: 4,
+                    date: '8月13日',
+                    title: '福州与撤离',
+                    dayImage: '44.jpg',
+                    events: [
+    {
+      time: '07:30-09:30',
+      title: '西禅古寺晨钟',
+      details: '唐代千年古刹，20元门票，宋明古塔与佛像林立，清晨光线柔和适合拍摄。',
+      img: 'https://img0.baidu.com/it/u=2948108290,295757863&fm=253&app=138&f=JPEG?w=800&h=1188'
+    },
+    {
+      time: '10:00-12:00',
+      title: '上下杭商埠漫游',
+      details: '明清闽江码头旧地，中西合璧骑楼、会馆林立，如今文创店铺与咖啡馆密集，可补给午餐。',
+      img: 'https://qcloud.dpfile.com/pc/-hwyAJOnUVa1nVUZ0pgIbheeRF17-pSYiiVVMpsv0BgSwKYF4geFJ9UEtPqpaL5kY0q73sB2DyQcgmKUxZFQtw.jpg'
+    },
+    {
+      time: '12:10-13:00',
+      title: '青年广场打卡',
+      details: '步行10分钟即达。红砖老仓+滨江步道，潮流装置艺术，适合拍人像。',
+      img: 'https://gips3.baidu.com/it/u=275875370,1799669291&fm=3074&app=3074&f=JPEG?w=1080&h=2084&type=normal&func='
+    },
+    {
+      time: '13:15-15:30',
+      title: '烟台山领事馆区',
+      details: '百年领事馆建筑群，斜坡街巷、复古窗棂与咖啡馆云集，午后光影极佳。',
+      img: 'https://img2.baidu.com/it/u=2966884077,2648956703&fm=253&app=138&f=JPEG?w=800&h=1761'
+    },
+    {
+      time: '16:00-18:00',
+      title: '鼓山日落行动',
+      details: '地铁30分钟抵山脚，缆车或徒步登顶。俯瞰榕城与闽江，夕阳与城市灯火同框。',
+      img: 'https://gips0.baidu.com/it/u=3732308732,293886023&fm=3074&app=3074&f=JPEG'
+    },
+    {
+      time: '19:30-21:00',
+      title: '福州站·撤离',
+      details: '地铁直达福州站，取行李、晚餐补给后登车返程，任务结束。',
+      img: 'https://qcloud.dpfile.com/pc/CZq6M9aY6qrNrXdleiMfocix4RxTwmaeXqyF50ql2psGyaPZkKBgPQGrAVtDL27K.jpg'
+    }
+                    ]
+                },
+            ],
+            destinations: [
+                { id: 1, name: '鼓浪屿', city: '厦门', img: 'https://pics5.baidu.com/feed/b3119313b07eca801a562799c807f3d2a1448334.jpeg@f_auto?token=fe9928e9bbaf8706ba312ce455aa057f', desc: '充满活力的海滨都市，融合了殖民地历史、艺术能量与海滨风情。无车岛，需步行游览。', tags: ['岛屿', '历史建筑', '步行'] },
+                { id: 2, name: '厦门大学', city: '厦门', img: 'https://b0.bdstatic.com/ugc/ekREfR5jH3ypTYxBMVYiLgd7686695d7ec8255ebe0ff0a89dab23f.jpg', desc: '中国最美大学之一，需提前通过官方渠道实名预约。芙蓉隧道是必看点。', tags: ['校园', '文化', '预约'] },
+                { id: 3, name: '沙坡尾', city: '厦门', img: 'https://img1.baidu.com/it/u=456998790,3332282638&fm=253&app=138&f=JPEG?w=500&h=667', desc: '由旧时避风坞改造的文创艺术区，新旧交融，是摄影和休闲的好去处。', tags: ['艺术区', '摄影', '咖啡'] },
+                { id: 4, name: '三坊七巷', city: '福州', img: 'https://qcloud.dpfile.com/pc/WmlEe88HrTPD2l57HnoIx348BxwPpstnw4notvPnSTzt9aff1ZkPwMfGD_xJEFdX.jpg', desc: '中国都市仅存的一块“里坊制度活化石”，是福州的历史之源、文化之根。', tags: ['古街', '名人故居', '历史'] },
+                { id: 5, name: '北部生态廊道', city: '平潭', img: 'https://gips2.baidu.com/it/u=1156804707,2104698514&fm=3074&app=3074&f=JPEG?w=1440&h=2130&type=normal&func=', desc: '专为观光打造的风景道，串联多个北部核心景点，非常适合电动车骑行。', tags: ['风景道', '骑行', '海景'] },
+                { id: 6, name: '长江澳风车田', city: '平潭', img: 'https://img.meituan.net/leadinimg/7fef0dc06638afaa7414ff817584386f170002.webp%40watermark%3D0', desc: '巨大的风车阵列沿着海岸线排开，构成平潭的标志性景观，是观赏日落的绝佳地点。', tags: ['风车', '日落', '摄影'] },
+                { id: 7, name: '坛南湾', city: '平潭', img: 'https://miaobi-lite.bj.bcebos.com/miaobi/5mao/b%275bmz5r2t5Z2b5Y2X5rm%2BXzE3Mjk1Njg4NTMuMTcwODg4XzE3Mjk1Njg4NTMuNDY0Njgy%27/1.png', desc: '著名的“蓝眼泪”观测点，拥有绵长平缓的沙滩。追泪需要运气和规划。', tags: ['海滩', '蓝眼泪', '夜游'] },
+                { id: 8, name: '猴研岛', city: '平潭', img: 'https://gips1.baidu.com/it/u=788913733,2448157484&fm=3074&app=3074&f=JPEG', desc: '祖国大陆距离台湾本岛最近的地方（68海里），具有特殊的地理意义。', tags: ['地标', '海岛', '纪念'] },
+            ],
+            food: [
+                { id: 1, name: '黄则和花生汤', city: '厦门', desc: '经典的甜品，口感顺滑，必尝。', price: '约5元' },
+                { id: 2, name: '1980烧肉粽', city: '厦门', desc: '馅料丰富的闽南咸粽，能量补充佳品。', price: '约15元' },
+                { id: 3, name: '莲欢海蛎煎', city: '厦门', desc: '厦门最具代表性的海鲜小吃。', price: '约20元' },
+                { id: 4, name: '八婆婆烧仙草', city: '厦门', desc: '清凉解暑，是炎热夏夜的完美选择。', price: '约8元' },
+                { id: 5, name: '同利肉燕', city: '福州', desc: '福州最著名的、以肉包肉的特色小吃。', price: '约15元' },
+                { id: 6, name: '永和鱼丸', city: '福州', desc: '体验地道的福州鱼丸，Q弹鲜美。', price: '约15元' },
+                { id: 7, name: '时来运转', city: '平潭', desc: '地瓜粉包裹馅料的特色小吃，寓意美好。', price: '约10元' },
+                { id: 8, name: '平潭海鲜', city: '平潭', desc: '新鲜捕捞的海产，品种丰富，价格实惠。', price: '丰俭由人' },
+            ],
+            budget: {
+                labels: ['交通', '住宿', '门票', '餐饮', '其他'],
+                data: [450, 500, 250, 600, 100],
+                colors: ['#14b8a6', '#0d9488', '#0f766e', '#047857', '#065f46']
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('.nav-tab');
+            const contentSections = document.querySelectorAll('.content-section');
+            const prepListContainer = document.getElementById('prep-list');
+            const daySelectorContainer = document.getElementById('day-selector');
+            const timelineContainer = document.getElementById('timeline-container');
+            const destGridContainer = document.getElementById('dest-grid');
+            const destFilterContainer = document.getElementById('dest-filter');
+            const foodGridContainer = document.getElementById('food-grid');
+            const foodFilterContainer = document.getElementById('food-filter');
+            const budgetChartCanvas = document.getElementById('budgetChart');
+
+            function switchTab(tabId) {
+                tabs.forEach(tab => {
+                    if (tab.dataset.tab === tabId) {
+                        tab.classList.add('tab-active');
+                        tab.classList.remove('tab-inactive');
+                    } else {
+                        tab.classList.remove('tab-active');
+                        tab.classList.add('tab-inactive');
+                    }
+                });
+
+                contentSections.forEach(section => {
+                    if (section.id === tabId) {
+                        section.classList.add('content-active');
+                    } else {
+                        section.classList.remove('content-active');
+                    }
+                });
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+            
+            function createPrepList() {
+                prepListContainer.innerHTML = appData.prep.map(category => `
+                    <div class="bg-slate-50 p-4 rounded-lg">
+                        <h3 class="font-bold text-lg text-slate-700 mb-3">${category.icon} ${category.title}</h3>
+                        <ul class="space-y-2">
+                            ${category.items.map(item => `
+                                <li class="flex items-center">
+                                    <input type="checkbox" id="${item.text.replace(/\s/g, '')}" class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 mr-3">
+                                    <label for="${item.text.replace(/\s/g, '')}" class="text-slate-600">${item.text}</label>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+            }
+
+            function createDaySelector() {
+                daySelectorContainer.innerHTML = appData.itinerary.map(day => `
+                    <button data-day="${day.day}" class="day-selector-btn text-sm md:text-base font-semibold py-2 px-4 rounded-lg transition-all duration-200 bg-slate-100 hover:bg-teal-100 text-slate-600">
+                        Day ${day.day}: ${day.date}
+                    </button>
+                `).join('');
+
+                const dayButtons = document.querySelectorAll('.day-selector-btn');
+                dayButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        dayButtons.forEach(btn => btn.classList.remove('bg-teal-600', 'text-white'));
+                        button.classList.add('bg-teal-600', 'text-white');
+                        createTimeline(parseInt(button.dataset.day));
+                    });
+                });
+            }
+
+            function createTimeline(day) {
+                const dayData = appData.itinerary.find(d => d.day === day);
+                if (!dayData) return;
+                timelineContainer.innerHTML = `
+                    <div class="p-4">
+                        <h3 class="text-xl font-bold text-center mb-2 text-teal-700">${dayData.title}</h3>
+                        <div class="relative w-full aspect-[16/9] mb-8 overflow-hidden rounded-lg shadow-lg">
+                            <img src="${dayData.dayImage}" alt="${dayData.title}" class="w-full h-full object-contain transition-transform duration-300 hover:scale-105" onerror="this.src='https://placehold.co/800x300/0f766e/white?text=图片未找到'">
+                        </div>
+                        <div class="relative border-l-2 border-teal-200 ml-4 pl-8 space-y-12">
+                            ${dayData.events.map(event => `
+                                <div class="timeline-item relative">
+                                    <div class="md:grid md:grid-cols-3 md:gap-6">
+                                        <div class="md:col-span-2">
+                                            <h4 class="font-bold text-slate-800 text-lg">${event.time} - ${event.title}</h4>
+                                            <p class="text-slate-500 mt-2">${event.details}</p>
+                                        </div>
+                                        <div class="mt-4 md:mt-0">
+                                             <div class="relative w-full aspect-[4/3] overflow-hidden rounded-lg shadow-md">
+                                                 <img src="${event.img}" alt="${event.title}" class="w-full h-full object-contain transition-transform duration-300 hover:scale-105" onerror="this.src='https://placehold.co/600x400/0f766e/white?text=图片未找到'">
+                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function createFilterButtons(container, data, callback) {
+                const cities = ['全部', ...new Set(data.map(item => item.city))];
+                container.innerHTML = cities.map(city => `
+                    <button data-filter="${city}" class="filter-btn text-sm md:text-base font-semibold py-2 px-4 rounded-lg transition-all duration-200 bg-slate-100 hover:bg-teal-100 text-slate-600">
+                        ${city}
+                    </button>
+                `).join('');
+                
+                const filterButtons = container.querySelectorAll('.filter-btn');
+                filterButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        filterButtons.forEach(btn => btn.classList.remove('bg-teal-600', 'text-white'));
+                        button.classList.add('bg-teal-600', 'text-white');
+                        callback(button.dataset.filter);
+                    });
+                });
+            }
+
+            function createDestGrid(filter = '全部') {
+                const filteredData = filter === '全部' ? appData.destinations : appData.destinations.filter(d => d.city === filter);
+                destGridContainer.innerHTML = filteredData.map(dest => `
+                    <div class="bg-white rounded-xl shadow overflow-hidden transition-all hover:shadow-lg hover:scale-105 flex flex-col">
+                        <img src="${dest.img}" alt="${dest.name}" class="w-full h-40 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x300/e2e8f0/94a3b8?text=Image+Not+Found';">
+                        <div class="p-5 flex flex-col flex-grow">
+                            <h3 class="font-bold text-lg text-teal-700">${dest.name}</h3>
+                            <p class="text-slate-600 my-2 text-sm flex-grow">${dest.desc}</p>
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                ${dest.tags.map(tag => `<span class="text-xs font-semibold bg-teal-100 text-teal-800 px-2 py-1 rounded-full">${tag}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function createFoodGrid(filter = '全部') {
+                const filteredData = filter === '全部' ? appData.food : appData.food.filter(f => f.city === filter);
+                foodGridContainer.innerHTML = filteredData.map(food => `
+                    <div class="bg-white rounded-xl shadow p-4 text-center transition-all hover:shadow-lg hover:scale-105 flex flex-col justify-center">
+                        <h3 class="font-bold text-lg text-teal-700">${food.name}</h3>
+                        <p class="text-slate-600 my-2 text-sm flex-grow">${food.desc}</p>
+                        <p class="font-bold text-teal-600 mt-2">${food.price}</p>
+                    </div>
+                `).join('');
+            }
+
+            function createBudgetChart() {
+                const total = appData.budget.data.reduce((a, b) => a + b, 0);
+                new Chart(budgetChartCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: appData.budget.labels,
+                        datasets: [{
+                            label: '预算花费',
+                            data: appData.budget.data,
+                            backgroundColor: appData.budget.colors,
+                            borderColor: '#f8fafc',
+                            borderWidth: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    font: {
+                                        size: 14,
+                                        family: "'Noto Sans SC', sans-serif"
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        const value = context.raw;
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        label += `¥${value} (${percentage}%)`;
+                                        return label;
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: `预估总开销：¥${total}`,
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                },
+                                padding: {
+                                    top: 10,
+                                    bottom: 20
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function initialize() {
+                switchTab('prep');
+                createPrepList();
+                
+                createDaySelector();
+                createTimeline(1);
+                document.querySelector('.day-selector-btn[data-day="1"]').classList.add('bg-teal-600', 'text-white');
+
+                createFilterButtons(destFilterContainer, appData.destinations, createDestGrid);
+                createDestGrid();
+                document.querySelector('#dest-filter .filter-btn[data-filter="全部"]').classList.add('bg-teal-600', 'text-white');
+
+                createFilterButtons(foodFilterContainer, appData.food, createFoodGrid);
+                createFoodGrid();
+                document.querySelector('#food-filter .filter-btn[data-filter="全部"]').classList.add('bg-teal-600', 'text-white');
+                
+                createBudgetChart();
+            }
+
+            initialize();
+        });
+    </script>
+</body>
+</html>

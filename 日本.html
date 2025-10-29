@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本七日游</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices: 
+        - Itinerary (Day 1-7): Structured HTML with Tailwind, Unicode icons (✈️, 🏨, 🍜, ⛩️, 🚅). Clickable day tabs. Goal: Inform, Organize. Justification: Clear, scannable. Library: HTML, JS.
+        - Transport Pass Value (JR Kansai Area Pass, Osaka Amazing Pass): Bar charts. Goal: Compare, Inform. Justification: Visual cost-benefit. Library: Chart.js.
+        - Packing Checklist: HTML list with checkboxes. Goal: Inform, Organize. Justification: Interactive tool. Library: HTML, JS.
+        - Accommodation & Food: Styled cards/lists. Goal: Inform. Justification: Easy browsing. Library: HTML, JS.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-button { transition: background-color 0.3s ease; }
+        .tab-button.active { background-color: #c2410c; color: white; } /* orange-700 */
+        .tab-button:not(.active) { background-color: #f97316; color: white; } /* orange-500 */
+        .tab-button:not(.active):hover { background-color: #ea580c; } /* orange-600 */
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .day-tab-button.active { background-color: #9a3412; color:white; } /* orange-800 */
+        .day-tab-button:not(.active) { background-color: #f97316; color:white; } /* orange-500 */
+        .day-tab-button:not(.active):hover { background-color: #ea580c; } /* orange-600 */
+        .chart-container { position: relative; width: 100%; max-width: 500px; margin-left: auto; margin-right: auto; height: 300px; max-height: 350px; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        @media (min-width: 768px) { .chart-container { height: 350px; max-height:400px; } }
+        .checklist-item { display: flex; align-items: center; margin-bottom: 0.5rem; }
+        .checklist-item input[type="checkbox"] { margin-right: 0.75rem; width: 1.25rem; height: 1.25rem; accent-color: #f97316; }
+        .prose-custom h3 { color: #c2410c; margin-top:1.5em; margin-bottom:0.5em; font-size:1.25em; }
+        .prose-custom h4 { color: #dd6b20; margin-top:1.25em; margin-bottom:0.4em; font-size:1.1em;}
+        .prose-custom p, .prose-custom ul, .prose-custom li { color: #374151; line-height:1.6; }
+        .prose-custom strong { color: #7c2d12; }
+        .prose-custom a { color: #f97316; text-decoration:underline;}
+        .prose-custom blockquote { border-left-color: #f97316; background-color: #fff7ed; padding: 0.5rem 1rem; margin-left:0; margin-right:0;}
+    </style>
+</head>
+<body class="bg-amber-50 text-neutral-800">
+
+    <header class="bg-orange-600 text-white p-6 shadow-md">
+        <h1 class="text-3xl font-bold text-center">🏯梓涛高进七日深度游攻略 🍜</h1>
+    </header>
+
+    <nav class="bg-orange-100 p-2 sticky top-0 z-50 shadow">
+        <ul class="flex flex-wrap justify-center space-x-1 sm:space-x-2">
+            <li><button data-tab="itinerary" class="tab-button active text-sm sm:text-base font-medium py-2 px-3 sm:px-4 rounded-md">📅 行程概览</button></li>
+            <li><button data-tab="preparation" class="tab-button text-sm sm:text-base font-medium py-2 px-3 sm:px-4 rounded-md">🎒 行前准备</button></li>
+            <li><button data-tab="accommodation" class="tab-button text-sm sm:text-base font-medium py-2 px-3 sm:px-4 rounded-md">🏨 住宿推荐</button></li>
+            <li><button data-tab="food" class="tab-button text-sm sm:text-base font-medium py-2 px-3 sm:px-4 rounded-md">🍣 美食指南</button></li>
+            <li><button data-tab="tips" class="tab-button text-sm sm:text-base font-medium py-2 px-3 sm:px-4 rounded-md">💡 实用贴士</button></li>
+        </ul>
+    </nav>
+
+    <main class="container mx-auto p-4 sm:p-6">
+        <section id="itinerary" class="content-section active">
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-lg prose-custom">
+                <h2 class="text-2xl font-semibold text-orange-700 mb-4 text-center">📅 每日行程探索</h2>
+                <p class="text-center mb-6 text-neutral-600">欢迎来到您的关西之旅！以下是为您精心策划的七日行程。点击下方的日期按钮，查看每一天的详细安排、景点介绍、交通指南和美食建议。愿您在大阪的活力、京都的古韵、宇治的茶香和奈良的鹿鸣中，收获一段难忘的旅程！</p>
+                <div id="day-tabs-container" class="flex flex-wrap justify-center gap-2 mb-6">
+                    </div>
+                <div id="day-content-container">
+                    </div>
+            </div>
+        </section>
+
+        <section id="preparation" class="content-section">
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-lg prose-custom">
+                <h2 class="text-2xl font-semibold text-orange-700 mb-6 text-center">🎒 行前准备：确保旅途顺畅无忧</h2>
+                <p class="text-center mb-6 text-neutral-600">充分的行前准备是愉快旅行的基石。本部分将为您提供通讯、资金、行装、交通票券及参观礼仪等方面的详细建议，助您轻松开启关西之旅。</p>
+
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3 border-b-2 border-orange-200 pb-2">📡 日本通讯：保持畅联无阻</h3>
+                        <p>为了确保您在关西旅程中能够随时上网查阅信息、保持联系，以下是几种推荐的通讯方式：</p>
+                        <h4>1. 随身WiFi (Pocket WiFi)</h4>
+                        <p>适合多人或多设备同时连接网络，提供稳定且安全的网络环境。强烈建议您在出行前通过网络预订随身WiFi，并在抵达关西国际机场(KIX)后直接领取。NINJA WiFi 是一个热门选择。考虑到您抵达时间较晚，提前预订好随身WiFi，抵达后直接领取，将为您节省宝贵的时间和精力。</p>
+                        <h4>2. 游客SIM卡 (实体SIM卡与eSIM)</h4>
+                        <p><strong>实体SIM卡</strong>：适合个人使用。抵达KIX后，您可以在机场内的通讯服务柜台或自动售货机购买。</p>
+                        <p><strong>eSIM</strong>：对于拥有兼容eSIM功能的手机的旅客而言，eSIM无疑是极为便捷的选择。您可以在出发前通过网络购买，通过扫描二维码即可激活。对于您的晚间抵达，eSIM的即时性优势更为突出。</p>
+                        <p><strong>推荐</strong>：若多人或多设备共享网络，建议选择预订随身WiFi。若为个人使用且手机兼容，强烈推荐eSIM。</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3 border-b-2 border-orange-200 pb-2">💴 资金与支付：ICOCA卡与现金</h3>
+                        <h4>1. ICOCA卡</h4>
+                        <p>ICOCA卡是JR西日本发行的充值式智能交通卡，广泛适用于关西地区的JR线路、地铁、私营铁路及巴士。同时，它也可以作为电子货币，在许多便利店、自动售货机等处进行小额支付。您可以在JR西日本的车站自动售票机或JR绿色窗口购买。初次购买通常包含500日元押金。此卡极大地简化了乘坐公共交通的流程。</p>
+                        <h4>2. 现金</h4>
+                        <p>虽然日本的电子支付日益普及，但在一些小型餐馆、传统商店或购买寺庙神社的门票、御守时，现金仍然是必要的。建议您准备适量的日元现金。</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3 border-b-2 border-orange-200 pb-2">🌦️ 行装建议：应对7月初的梅雨季</h3>
+                        <p>7月初的关西地区通常处于梅雨季节，天气特点是高温、高湿，且降雨频繁。以下是一些行装建议：</p>
+                        <ul id="packing-checklist" class="list-none p-0">
+                            <li class="checklist-item"><input type="checkbox" id="item1"><label for="item1">轻便、透气、快干材质的衣物 (如亚麻)</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item2"><label for="item2">多层穿搭衣物 (方便根据温差调整)</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item3"><label for="item3">轻薄防水雨衣或便携式雨披</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item4"><label for="item4">舒适的防水运动鞋或抓地力好的旅行凉鞋</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item5"><label for="item5">多备几双快干型袜子</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item6"><label for="item6">轻便折叠伞</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item7"><label for="item7">小型防水袋 (保护电子设备和证件)</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item8"><label for="item8">迷你毛巾或手帕</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item9"><label for="item9">防晒霜和太阳镜</label></li>
+                            <li class="checklist-item"><input type="checkbox" id="item10"><label for="item10">个人药品和驱蚊液</label></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3 border-b-2 border-orange-200 pb-2">🎟️ 必备交通票券：精打细算游关西</h3>
+                        <p>根据您的7日行程，以下是一些值得考虑的交通票券组合：</p>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>ICOCA卡</strong>：全程必备，用于零散交通和购物。</li>
+                            <li><strong>JR关西地区通票4日券 (约¥7000)</strong>：建议购买，用于第4天（大阪→京都）、第6天（京都-宇治-奈良-京都的JR部分）和第7天（京都→KIX的HARUKA号）。
+                                <div class="chart-container my-4">
+                                    <canvas id="jrPassChart"></canvas>
+                                </div>
+                                <p class="text-sm text-neutral-600">图表说明：JR关西地区通票4日券费用与部分行程单独购票费用对比。单独购票费用估算包括：大阪→京都 (¥580), 京都→宇治 (¥240), 宇治→奈良 (¥510), 奈良→京都 (¥720), 京都→关西机场HARUKA号 (¥2900)，总计约¥4950。通票价值体现在更多JR线路的无限次乘坐和便利性上。</p>
+                            </li>
+                            <li><strong>大阪周游卡1日券 (约¥3500)</strong>：建议在第2天大阪市区游时使用。
+                                <div class="chart-container my-4">
+                                    <canvas id="osakaAmazingPassChart"></canvas>
+                                </div>
+                                <p class="text-sm text-neutral-600">图表说明：大阪周游卡1日券费用与部分景点门票及交通费用对比。例如，大阪城天守阁 (¥1200) + 梅田蓝天大厦空中庭园 (¥2000，通票15:00前免费) + 市内交通 (估算¥300+)，合计已超过或接近通票价格。</p>
+                            </li>
+                            <li><strong>京都地铁巴士一日券 (¥1100)</strong>：在京都的第4天和第5天，根据当日具体行程（特别是巴士乘坐频率）决定是否购买。</li>
+                        </ul>
+                        <p><strong>推荐策略总结：</strong></p>
+                        <ol class="list-decimal pl-5 space-y-1">
+                            <li>ICOCA卡：全程必备。</li>
+                            <li>JR关西地区通票4日券：用于指定日期的JR长途及部分短途。</li>
+                            <li>大阪周游卡1日券：用于大阪市区游。</li>
+                            <li>京都地铁巴士一日券：按需购买。</li>
+                            <li>第1天 KIX → 难波：使用ICOCA卡乘坐南海电铁空港急行。</li>
+                            <li>第3天 USJ往返：使用ICOCA卡乘坐JR。</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3 border-b-2 border-orange-200 pb-2">🙏 神社与寺庙参观礼仪</h3>
+                        <p>在日本参观神社和寺庙时，了解并遵守当地的礼仪规范非常重要：</p>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>进入</strong>：神社前鸟居需鞠躬，寺庙山门前合掌鞠躬。避免走鸟居正中央。</li>
+                            <li><strong>净手漱口 (手水舍)</strong>：
+                                <ol class="list-decimal pl-5">
+                                    <li>右手持勺洗左手。</li>
+                                    <li>左手持勺洗右手。</li>
+                                    <li>右手持勺，水倒左手掌心漱口 (勿用勺直接接触嘴)，吐水于指定处。</li>
+                                    <li>立起勺子，用余水清洗勺柄。</li>
+                                </ol>
+                            </li>
+                            <li><strong>参拜</strong>：
+                                <ul class="list-disc pl-5">
+                                    <li><strong>神社</strong>：“二拜二拍手一拜”（鞠躬两次，拍手两次，合掌祈祷，再鞠躬一次）。先投香油钱。</li>
+                                    <li><strong>寺庙</strong>：通常无需拍手。可点线香插入香炉，然后合掌静默祈祷。</li>
+                                </ul>
+                            </li>
+                            <li><strong>其他</strong>：进入殿堂内部通常需脱鞋，注意保持袜子干净。留意禁止摄影标识。保持安静。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="accommodation" class="content-section">
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-lg prose-custom">
+                <h2 class="text-2xl font-semibold text-orange-700 mb-6 text-center">🏨 物美价廉性价比高的住宿选择</h2>
+                <p class="text-center mb-6 text-neutral-600">为确保您的旅途舒适且经济，以下是针对大阪和京都的住宿建议，重点考虑交通便利性和性价比。价格仅供参考，请以预订时为准。</p>
+                
+                <div>
+                    <h3 class="text-xl font-semibold text-orange-600 mb-4">大阪住宿推荐 (难波、梅田)</h3>
+                    <p>对于您在大阪的两晚住宿，难波地区因其直通机场和丰富的餐饮娱乐选择成为首选。</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">Acro Capsule Hotel Namba Dotonbori</h4>
+                            <p><strong>类型:</strong> 胶囊旅馆</p>
+                            <p><strong>价格:</strong> 约31美元起</p>
+                            <p><strong>特色:</strong> 地理位置绝佳，性价比高。</p>
+                            <p><strong>评价:</strong> “性价比超高，位置极好！”</p>
+                        </div>
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">Y's Cabin Osaka Namba</h4>
+                            <p><strong>类型:</strong> 胶囊旅馆</p>
+                            <p><strong>价格:</strong> 约41美元起</p>
+                            <p><strong>特色:</strong> 位置优越，安全干净。</p>
+                            <p><strong>评价:</strong> “位置太棒了，安全又干净”</p>
+                        </div>
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">Sotetsu Grand Fresa Osaka Namba</h4>
+                            <p><strong>类型:</strong> 中档酒店</p>
+                            <p><strong>价格:</strong> 需查询当日价格</p>
+                            <p><strong>特色:</strong> 近日本桥站，席梦思床，早餐丰富。</p>
+                            <p><strong>评价:</strong> “位置很好，靠近车站和市中心”，“性价比高”</p>
+                        </div>
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">Hotel Hillarys Shinsaibashi</h4>
+                            <p><strong>类型:</strong> 中档酒店</p>
+                            <p><strong>价格:</strong> 约45美元起</p>
+                            <p><strong>特色:</strong> 近道顿堀、美国村，员工友好。</p>
+                            <p><strong>评价:</strong> “员工友好且乐于助人”</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold text-orange-600 mb-4">京都住宿推荐 (京都站、四条河原町/祗园)</h3>
+                    <p>您将在京都住宿三晚。京都站附近适合利用JR出行，四条河原町/祗园区域则更靠近市中心和传统氛围。</p>
+                     <div class="grid md:grid-cols-2 gap-6">
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">Piece Hostel Kyoto</h4>
+                            <p><strong>类型:</strong> 青年旅社</p>
+                            <p><strong>价格:</strong> 约51美元起</p>
+                            <p><strong>特色:</strong> 近京都站，评价高 (9.2分)。</p>
+                        </div>
+                         <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">K's House Kyoto - Hostel</h4>
+                            <p><strong>类型:</strong> 青年旅社</p>
+                            <p><strong>价格:</strong> 约60美元起</p>
+                            <p><strong>特色:</strong> 近京都站，评价良好 (8.6分)。</p>
+                        </div>
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">RIHGA Royal Hotel Kyoto</h4>
+                            <p><strong>类型:</strong> 中档酒店</p>
+                            <p><strong>价格:</strong> 需查询当日价格</p>
+                            <p><strong>特色:</strong> 近京都站，有接驳巴士，房间大小适中。</p>
+                            <p><strong>评价:</strong> “很棒的酒店，靠近火车站”</p>
+                        </div>
+                        <div class="border border-orange-200 rounded-lg p-4 bg-amber-50 shadow">
+                            <h4 class="font-semibold text-lg text-orange-700">Hotel GOCO Stay Kyoto Shijo Kawaramachi</h4>
+                            <p><strong>类型:</strong> 中档酒店</p>
+                            <p><strong>价格:</strong> 需查询当日价格</p>
+                            <p><strong>特色:</strong> 地理位置和性价比评分极高 (均为9.7分)。位于四条河原町区域。</p>
+                        </div>
+                    </div>
+                </div>
+                 <p class="mt-6"><strong>预订技巧:</strong> 尽早预订，尤其旺季。优先选择靠近主要车站的酒店。日本酒店房间可能偏小。商务酒店通常性价比高。</p>
+            </div>
+        </section>
+
+        <section id="food" class="content-section">
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-lg prose-custom">
+                <h2 class="text-2xl font-semibold text-orange-700 mb-6 text-center">🍣 关西风味赏：美食亮点不容错过</h2>
+                <p class="text-center mb-6 text-neutral-600">关西地区是日本的美食重镇，每个城市都有其独特的风味等待您去发掘。在行程中，有意识地品尝这些地方特色美食，无疑会为您的关西之旅增添更多美好的味蕾记忆和文化体验。</p>
+                
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3">🐙 大阪 - “天下厨房”的盛宴</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>章鱼烧 (たこ焼き)</strong>：大阪最具代表性的街头小吃，道顿堀是品尝绝佳地点。</li>
+                            <li><strong>大阪烧 (お好み焼き)</strong>：关西风味什锦煎饼，酱汁浓郁，口感丰富。</li>
+                            <li><strong>串炸 (串カツ)</strong>：各种食材裹面油炸的小串，新世界地区是串炸聚集地。记得“禁止二次蘸酱”。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3">🍵 京都 - 雅致传统的味道</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>怀石料理 (懐石料理)</strong>：强调时令、口味与摆盘艺术的高级料理。</li>
+                            <li><strong>汤豆腐 (湯豆腐)</strong>：清淡雅致，能品尝豆腐本身甘甜的京都代表性素食。</li>
+                            <li><strong>抹茶甜点 (抹茶スイーツ)</strong>：各式抹茶芭菲、冰淇淋、蛋糕等，茶香浓郁。</li>
+                            <li><strong>京野菜料理 (京野菜料理)</strong>：使用京都特有传统蔬菜烹制的料理。</li>
+                            <li><strong>京渍物 (京漬物)</strong>：京都风味腌菜，锦市场是品尝和购买的好地方。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3">🦌 奈良 - 古都的质朴馈赠</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>柿叶寿司 (柿の葉寿司)</strong>：用柿子叶包裹的醋饭寿司，风味独特。</li>
+                            <li><strong>三轮素面 (三輪そうめん)</strong>：极细手工面线，口感爽滑。</li>
+                            <li><strong>茶粥 (茶粥)</strong>：用茶叶与米同煮的粥，带有淡淡茶香。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-orange-600 mb-3">🍃 宇治 - 抹茶天堂的极致体验</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><strong>抹茶荞麦面 (抹茶そば)</strong>：融入抹茶粉的绿色荞麦面，带有清香。</li>
+                            <li><strong>抹茶团子 (抹茶団子)</strong>：抹茶调味的糯米团子，口感软糯。</li>
+                            <li><strong>纯正宇治茶 (宇治茶)</strong>：在茶屋品尝高品质煎茶、玉露或抹茶。</li>
+                            <li><strong>各式抹茶甜点</strong>：宇治的茶铺和咖啡馆提供琳琅满目的抹茶甜点。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tips" class="content-section">
+            <div class="bg-white p-4 sm:p-6 rounded-lg shadow-lg prose-custom">
+                <h2 class="text-2xl font-semibold text-orange-700 mb-6 text-center">💡 关西之旅实用贴士与温馨提醒</h2>
+                <p class="text-center mb-6 text-neutral-600">掌握一些实用小贴士，能让您的旅程更加顺畅愉快。以下是一些额外的建议，希望能对您有所帮助。</p>
+
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-semibold text-lg text-orange-600">公共交通导航</h4>
+                        <ul class="list-disc pl-5">
+                            <li>善用Google Maps或Navitime (JapanTravel) 等APP规划路线。</li>
+                            <li>注意列车类型（普通、快速、急行、特急等）及其停靠站点。</li>
+                            <li>车站指示牌通常有英文标识。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-lg text-orange-600">应对梅雨季节 (tsuyu)</h4>
+                        <ul class="list-disc pl-5">
+                            <li>行程保持弹性，预备室内活动方案 (博物馆、茶道体验等)。</li>
+                            <li>雨势较大时可暂避室内或进行室内参观。</li>
+                            <li>雨中景致别有风情，如寺庙苔藓庭园。此时也是观赏绣球花的好时节。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-lg text-orange-600">夏季庆典与活动 (7月初)</h4>
+                        <ul class="list-disc pl-5">
+                            <li><strong>京都祗园祭</strong>：7月初各项准备活动陆续展开，可留意前期神事。</li>
+                            <li><strong>大阪爱染祭</strong>：传统上6月30日至7月2日举行，可能与您的行程部分重叠。</li>
+                            <li><strong>京都鸭川纳凉床</strong>：5月至9月，可在河边平台享用户外晚餐。</li>
+                            <li>临近出行日期时，查询当地最新的活动信息。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-lg text-orange-600">其他实用小贴士</h4>
+                        <ul class="list-disc pl-5">
+                            <li><strong>投币式储物柜</strong>：火车站广泛设置，方便寄存行李。</li>
+                            <li><strong>免税购物</strong>：寻找“Tax-Free”标识，购物时携带护照。</li>
+                            <li><strong>保持水分</strong>：梅雨季节湿度高，注意及时补水。</li>
+                            <li><strong>垃圾桶</strong>：日本街头垃圾桶不多，请随身携带小垃圾袋。</li>
+                            <li><strong>紧急电话</strong>：警察110，火警/急救119。</li>
+                        </ul>
+                    </div>
+                </div>
+                 <p class="mt-8 text-center text-lg text-orange-700 font-semibold">祝您在关西拥有一段精彩纷呈、回味无穷的美好时光！</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center p-4 mt-8 text-sm text-neutral-600">
+        <p>本攻略信息整理自用户提供的资料，仅供参考。请以出行当日实际情况为准。</p>
+    </footer>
+
+    <script>
+        const mainTabs = document.querySelectorAll('.tab-button');
+        const contentSections = document.querySelectorAll('.content-section');
+        const dayTabsContainer = document.getElementById('day-tabs-container');
+        const dayContentContainer = document.getElementById('day-content-container');
+
+        const itineraryData = {
+            day1: {
+                title: "第1天 (6月29日，星期六): 抵达大阪，初探难波夜色 🌃",
+                content: `
+                    <p>🛬 <strong>傍晚 (19:55): 抵达关西国际机场 (KIX)</strong></p>
+                    <p>预留约1-1.5小时办理入境、提取行李及海关检查。</p>
+                    <p>📡 <strong>通讯与交通卡准备</strong></p>
+                    <p>在机场激活预订的随身WiFi或eSIM。购买ICOCA卡等。</p>
+                    <p>🚅 <strong>从KIX前往难波 (Namba) 酒店</strong></p>
+                    <p>推荐乘坐南海电铁前往难波。<strong>特急Rapi:t</strong> (约38分钟, ¥1450-¥1490) 或 <strong>空港急行</strong> (约44-47分钟, ¥930-¥970)。对于您的抵达时间，南海电铁是更稳妥的选择，末班车较晚。</p>
+                    <p>🏨 <strong>酒店入住与晚餐 🍜</strong></p>
+                    <p>抵达难波后办理酒店入住。之后可在道顿堀或难波地区享用晚餐，品尝章鱼烧、大阪烧等。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 选择入住难波地区，对于晚班机抵达非常方便，南海电铁直达，出站即可轻松前往酒店。</p></blockquote>
+                `
+            },
+            day2: {
+                title: "第2天 (6月30日，星期日): 大阪经典一日游 - 历史、高塔与美食 🏯",
+                content: `
+                    <p>🎟️ <strong>今日建议使用大阪周游卡 (Osaka Amazing Pass)</strong></p>
+                    <p>此卡包含市内主要交通及多个热门景点免费入场。</p>
+                    <p><strong>上午 (09:00 - 12:30): 大阪城公园与天守阁 🌸</strong></p>
+                    <p>交通：从难波乘坐地铁至“谷町四丁目”站或“森之宫”站。大阪城天守阁是大阪象征，使用大阪周游卡可免费参观 (原价¥1200)。建议游览2.5-3小时。</p>
+                    <p><strong>午餐 (12:30 - 13:30) 🍛</strong></p>
+                    <p>可在大阪城公园附近或前往新世界地区用餐。</p>
+                    <p><strong>下午 (14:00 - 17:00): 新世界与通天阁 🗼</strong></p>
+                    <p>交通：从大阪城区域乘坐地铁前往。新世界充满复古风情，通天阁是其标志，使用大阪周游卡可免费进入一般展望台 (原价约¥900)。建议游览2-3小时。</p>
+                    <p><strong>傍晚至晚上 (17:30 后): 道顿堀与心斋桥 🛍️</strong></p>
+                    <p>交通：从新世界乘坐地铁至“难波”站或“心斋桥”站。道顿堀是美食娱乐区，格力高跑跑人是地标。心斋桥是购物好去处。可免费乘坐道顿堀水上观光船 (凭大阪周游卡)。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 大阪周游卡在这一天能充分发挥价值，覆盖主要景点门票和市内交通。</p></blockquote>
+                `
+            },
+            day3: {
+                title: "第3天 (7月1日，星期一): 日本环球影城 (USJ) 奇幻之旅 🎢",
+                content: `
+                    <p><strong>全天：日本环球影城 (Universal Studios Japan) ✨</strong></p>
+                    <p><strong>交通 (从难波出发):</strong> JR难波站 → JR大和路线至“今宫” → JR大阪环状线至“西九条” → JR梦咲线至“环球城”站 (约30-35分钟, ¥280-¥420)。</p>
+                    <p><strong>门票与快速®通行券:</strong> 强烈建议提前购买影城入场券。若想缩短排队时间，可考虑购买快速®通行券。进入超级任天堂世界™通常需要整理券或确约券，可通过官方APP抽取或购买含相关权益的快速通行券。</p>
+                    <p><strong>必玩区域与项目推荐:</strong></p>
+                    <ul class="list-disc pl-5">
+                        <li>超级任天堂世界™ (马力欧卡丁车, 耀西冒险)</li>
+                        <li>哈利波特的魔法世界™ (禁忌之旅, 鹰马的飞行)</li>
+                        <li>小黄人乐园 (小黄人调皮闹剧乘车游)</li>
+                        <li>侏罗纪公园 (飞天翼龙, 乘船游)</li>
+                        <li>好莱坞区 (好莱坞美梦・乘车游)</li>
+                    </ul>
+                    <p><em>请注意：“蜘蛛侠惊魂历险记”已永久关闭。“咚奇刚国度”预计2024年12月开放。</em></p>
+                    <p><strong>游玩提示:</strong> 下载USJ官方APP查看地图、排队时间、抽取整理券。提前规划路线。注意防晒补水和雨具。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 提前购票和规划是畅玩USJ的关键！快速通行券在热门日期非常抢手。</p></blockquote>
+                `
+            },
+            day4: {
+                title: "第4天 (7月2日，星期二): 从大阪到京都，漫步东山雅韵 ⛩️",
+                content: `
+                    <p><strong>上午：从大阪前往京都，酒店入住 🏨</strong></p>
+                    <p>交通方式：</p>
+                    <ul class="list-disc pl-5">
+                        <li><strong>JR线:</strong> JR大阪站 → JR京都线新快速 → JR京都站 (约30分钟, ¥580)。</li>
+                        <li><strong>阪急电铁:</strong> 阪急大阪梅田站 → 阪急京都本线特急 → 京都河原町站 (约45分钟, ¥410)。</li>
+                        <li><strong>京阪电车:</strong> 京阪淀屋桥站 → 京阪本线特急 → 祗园四条/三条等站 (约55分钟, ¥420-¥490)。</li>
+                    </ul>
+                    <p>抵达京都后，前往酒店办理入住并寄存行李。建议选择靠近京都站或四条河原町/祗园地区的酒店。</p>
+                    <p><strong>下午至傍晚：京都东山南部经典徒步游 🚶‍♀️</strong></p>
+                    <p>交通：从京都站乘市营巴士100路或206路至“五条坂”或“清水道”站。</p>
+                    <p><strong>游览顺序与亮点:</strong></p>
+                    <ol class="list-decimal pl-5">
+                        <li><strong>清水寺 (Kiyomizu-dera)</strong>: 世界文化遗产，著名的“清水舞台”，音羽瀑布。门票约¥400-¥500。游览1.5-2小时。</li>
+                        <li><strong>三年坂与二年坂</strong>: 风情石板路，两旁传统町屋，售卖特产和抹茶甜点。游览45分钟-1小时。</li>
+                        <li><strong>高台寺 (Kodai-ji)</strong>: 枯山水庭园，灵屋，竹林。门票¥600。游览30分钟-1小时。</li>
+                        <li><strong>八坂神社 (Yasaka Shrine) 与圆山公园</strong>: 京都香火最旺神社之一，祗园祭举办地。免费。游览30分钟-1小时。</li>
+                        <li><strong>祗园 (Gion) 与花见小路</strong>: 著名艺伎区，傍晚可能邂逅艺伎或舞伎。游览1-2小时。</li>
+                    </ol>
+                    <p><strong>晚餐 🥢</strong></p>
+                    <p>可在祗园或先斗町区域享用。夏季先斗町有“川床”体验。</p>
+                    <p><strong>票券使用:</strong> 若多次乘坐巴士/地铁，可考虑京都地铁巴士一日券 (¥1100)。否则用ICOCA卡。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 东山南部是京都精华，步行是最佳探索方式。舒适的鞋子非常重要！</p></blockquote>
+                `
+            },
+            day5: {
+                title: "第5天 (7月3日，星期三): 京都神韵 - 千本鸟居、锦绣厨房与金阁映辉 ✨",
+                content: `
+                    <p><strong>上午 (08:30 - 12:00): 伏见稻荷大社 (Fushimi Inari-taisha) 🦊</strong></p>
+                    <p>交通：JR京都站 → JR奈良线 (普通列车) → “稻荷”站 (约5分钟, ¥150)。或京阪本线至“伏见稻荷”站。</p>
+                    <p>亮点：延绵数公里的“千本鸟居”蔚为壮观。全日本稻荷神社总本社。免费。建议游览2-4小时，可徒步至半山腰“四辻”观景。为避开人潮，建议清晨前往。</p>
+                    <p><strong>中午至下午 (12:30 - 14:30): 锦市场 (Nishiki Market) - “京都的厨房” 🥕</strong></p>
+                    <p>交通：从伏见稻荷区域乘JR或京阪电车转地铁/步行前往。</p>
+                    <p>亮点：热闹非凡的商业街，汇集京都特产食材、渍物、京果子等。品尝豆乳甜甜圈、玉子烧等小吃。多数店铺10:00-18:00营业。建议游览1.5-2小时。</p>
+                    <p><strong>下午 (15:00 - 17:30): 金阁寺 (Kinkaku-ji / Golden Pavilion) 🌟</strong></p>
+                    <p>交通：从四条乌丸/河原町乘市营巴士12、59或205路至“金阁寺道”站 (约40分钟)。</p>
+                    <p>亮点：核心建筑舍利殿外墙全以金箔装饰，倒映池中，是京都代表景观。世界文化遗产。门票¥500。建议游览45-60分钟。</p>
+                    <p><strong>备选：龙安寺 (Ryoan-ji Temple)</strong> (若时间允许)</p>
+                    <p>从金阁寺乘巴士或步行可达。以著名枯山水石庭闻名。门票¥600。</p>
+                    <p><strong>傍晚 🌆</strong></p>
+                    <p>返回市区，可在先斗町或木屋町享用晚餐。</p>
+                    <p><strong>票券使用:</strong> 今日行程巴士/地铁较多，京都地铁巴士一日券 (¥1100) 会很实用。若JR通票有效，可用于前往伏见稻荷。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 伏见稻荷的晨间徒步与锦市场的美食探索相结合，能体验京都动静皆宜的魅力。</p></blockquote>
+                `
+            },
+            day6: {
+                title: "第6天 (7月4日，星期四): 宇治茶香与奈良鹿鸣 🍵🦌",
+                content: `
+                    <p>本日行程结合宇治茶文化与奈良古都风情。若持有JR关西地区通票将极为便利。</p>
+                    <p><strong>上午 (09:00 - 13:00): 宇治 (Uji) - 茶道之源 🌿</strong></p>
+                    <p>交通：JR京都站 → JR奈良线 → JR宇治站 (约20-30分钟, ¥240)。</p>
+                    <p><strong>游览亮点:</strong></p>
+                    <ol class="list-decimal pl-5">
+                        <li><strong>平等院 (Byodoin Temple)</strong>: 世界文化遗产，凤凰堂是10日元硬币图案。庭园与凤翔馆共通券¥700，凤凰堂内部参观另付¥300。游览1-1.5小时。</li>
+                        <li><strong>宇治桥与宇治川</strong>: 日本最古老三桥之一，风景秀丽。</li>
+                        <li><strong>宇治上神社 (Ujigami Shrine)</strong>: 日本现存最古老神社建筑，世界文化遗产。免费。游览15-30分钟。</li>
+                        <li><strong>抹茶体验</strong>: 品尝正宗抹茶甜点或购买宇治茶。推荐中村藤吉本店或伊藤久右卫门本店。</li>
+                    </ol>
+                    <p><strong>午餐 (13:00 - 14:00) 🍜</strong></p>
+                    <p>在宇治品尝抹茶荞麦面或在茶铺茶房用餐。</p>
+                    <p><strong>下午 (14:00 - 18:00): 奈良 (Nara) - 与鹿共舞，瞻仰大佛 🌳</strong></p>
+                    <p>交通：JR宇治站 → JR奈良线 → JR奈良站 (约30-35分钟, ¥510)。(近铁奈良站更近景点，但JR通票不适用)。</p>
+                    <p><strong>游览亮点:</strong></p>
+                    <ol class="list-decimal pl-5">
+                        <li><strong>奈良公园 (Nara Park)</strong>: 与野生梅花鹿亲密互动，可购买鹿仙贝喂食。游览2.5-3小时 (含寺社)。</li>
+                        <li><strong>东大寺 (Todai-ji Temple)</strong>: 世界文化遗产，供奉15米高卢舍那大佛。大佛殿是世界最大木结构建筑之一。</li>
+                        <li><strong>春日大社 (Kasuga Taisha Shrine)</strong>: 世界文化遗产，以约三千座石灯笼和铜灯笼闻名。</li>
+                    </ol>
+                    <p><strong>傍晚 (18:00 后): 返回京都与晚餐 🌃</strong></p>
+                    <p>交通：JR奈良站 → JR奈良线 → JR京都站 (みやこ路快速约45分钟, ¥720)。或近铁奈良站 → 近铁京都线 → 近铁京都站 (急行约50分钟, ¥760)。</p>
+                    <p><strong>票券使用:</strong> JR关西地区通票可覆盖京都-宇治-奈良-京都的JR线路。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 一日游宇治和奈良行程较紧凑，早出发和高效交通衔接是关键。</p></blockquote>
+                `
+            },
+            day7: {
+                title: "第7天 (7月5日，星期五): 关西的最后回味与顺利启程 ✈️ (航班14:00)",
+                content: `
+                    <p><strong>上午 (至约10:30): 最后采购或短暂游览 🎁</strong></p>
+                    <p>若住京都站附近：可在站内The Cube购物中心或JR京都伊势丹百货采购纪念品 (如八ツ橋、抹茶年轮蛋糕)。</p>
+                    <p>从酒店退房，寄存行李。</p>
+                    <p><strong>上午晚些时候 (10:30 - 12:00): 前往关西国际机场 (KIX) 🛫</strong></p>
+                    <p><strong>从京都站出发 (建议最晚12:00前抵达KIX):</strong></p>
+                    <ul class="list-disc pl-5">
+                        <li><strong>JR特急HARUKA号</strong>: 最推荐。车程约75-80分钟。非预留座约¥2900，预留座约¥3430。JR通票可用。建议选择10:30或更早班次。</li>
+                        <li><strong>机场巴士</strong>: 从京都站八条口上车。车程约85-100分钟。票价约¥2600-¥2800。</li>
+                    </ul>
+                    <p><em>(若从大阪出发，难波可乘南海电铁，梅田可乘JR HARUKA号或关空快速。)</em></p>
+                    <p><strong>12:00: 抵达KIX机场 🕒</strong></p>
+                    <p>办理飞往香港的登机手续，结束愉快的关西之旅。</p>
+                    <p><strong>交通方式对比：前往关西国际机场 (KIX)</strong></p>
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th scope="col" class="px-3 py-2">出发地</th>
+                                <th scope="col" class="px-3 py-2">交通方式</th>
+                                <th scope="col" class="px-3 py-2">车程</th>
+                                <th scope="col" class="px-3 py-2">费用 (¥)</th>
+                                <th scope="col" class="px-3 py-2">建议出发</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bg-white border-b">
+                                <td class="px-3 py-2">京都站</td>
+                                <td class="px-3 py-2">JR特急HARUKA号</td>
+                                <td class="px-3 py-2">75-80分</td>
+                                <td class="px-3 py-2">2900-3430</td>
+                                <td class="px-3 py-2">10:00-10:30</td>
+                            </tr>
+                            <tr class="bg-white border-b">
+                                <td class="px-3 py-2">京都站</td>
+                                <td class="px-3 py-2">机场巴士</td>
+                                <td class="px-3 py-2">85-100分</td>
+                                <td class="px-3 py-2">2600-2800</td>
+                                <td class="px-3 py-2">10:00-10:20</td>
+                            </tr>
+                             <tr class="bg-gray-50 border-b">
+                                <td class="px-3 py-2">大阪难波</td>
+                                <td class="px-3 py-2">南海电铁 特急Rapi:t</td>
+                                <td class="px-3 py-2">35-40分</td>
+                                <td class="px-3 py-2">1450-1490</td>
+                                <td class="px-3 py-2">11:00-11:20</td>
+                            </tr>
+                             <tr class="bg-gray-50 border-b">
+                                <td class="px-3 py-2">大阪梅田</td>
+                                <td class="px-3 py-2">JR特急HARUKA号</td>
+                                <td class="px-3 py-2">45-50分</td>
+                                <td class="px-3 py-2">1800-2900</td>
+                                <td class="px-3 py-2">10:50-11:10</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-xs mt-1">*以上时间与费用仅供参考，请以出行当日实际情况为准。</p>
+                    <blockquote><p>💡 <strong>小贴士:</strong> 从京都出发，HARUKA号通常是时间最可控且舒适的选择。预订指定席更安心。</p></blockquote>
+                `
+            }
+        };
+
+        function generateDayTabs() {
+            Object.keys(itineraryData).forEach((dayKey, index) => {
+                const dayButton = document.createElement('button');
+                dayButton.classList.add('day-tab-button', 'py-2', 'px-4', 'rounded-md', 'font-medium', 'text-sm', 'sm:text-base');
+                dayButton.dataset.day = dayKey;
+                // Extracting a shorter title for the button
+                let buttonText = itineraryData[dayKey].title.split(':')[0];
+                 if (buttonText.includes('(')) { // Keep date for clarity
+                    buttonText = buttonText.substring(0, buttonText.indexOf('(') + 4);
+                }
+                dayButton.textContent = buttonText;
+                if (index === 0) {
+                    dayButton.classList.add('active');
+                }
+                dayTabsContainer.appendChild(dayButton);
+            });
+        }
+        
+        function displayDayContent(dayKey) {
+            dayContentContainer.innerHTML = `
+                <h3 class="text-xl sm:text-2xl font-semibold text-orange-700 mb-4">${itineraryData[dayKey].title}</h3>
+                <div class="prose prose-sm sm:prose-base max-w-none prose-custom">${itineraryData[dayKey].content}</div>
+            `;
+        }
+
+        mainTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                mainTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                contentSections.forEach(section => {
+                    section.classList.remove('active');
+                    if (section.id === tab.dataset.tab) {
+                        section.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        dayTabsContainer.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                document.querySelectorAll('.day-tab-button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                displayDayContent(e.target.dataset.day);
+            }
+        });
+        
+        // Initial setup
+        generateDayTabs();
+        if (Object.keys(itineraryData).length > 0) {
+            displayDayContent(Object.keys(itineraryData)[0]); // Display first day by default
+        }
+
+        // Chart.js for JR Pass
+        const jrPassCtx = document.getElementById('jrPassChart')?.getContext('2d');
+        if (jrPassCtx) {
+            new Chart(jrPassCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['JR关西地区通票4日券', '部分行程单独购票估算'],
+                    datasets: [{
+                        label: '费用 (日元)',
+                        data: [7000, 4950], // Pass cost, Estimated individual cost
+                        backgroundColor: [
+                            'rgba(249, 115, 22, 0.7)', // orange-500
+                            'rgba(234, 88, 12, 0.7)'  // orange-600
+                        ],
+                        borderColor: [
+                            'rgba(249, 115, 22, 1)',
+                            'rgba(234, 88, 12, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '费用 (日元)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ¥' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Chart.js for Osaka Amazing Pass
+        const osakaPassCtx = document.getElementById('osakaAmazingPassChart')?.getContext('2d');
+        if (osakaPassCtx) {
+            new Chart(osakaPassCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['大阪周游卡1日券', '主要景点门票+交通估算'],
+                    datasets: [{
+                        label: '费用 (日元)',
+                        data: [3500, 3500], // Pass cost, Estimated individual cost (1200+2000+300)
+                        backgroundColor: [
+                            'rgba(249, 115, 22, 0.7)',
+                            'rgba(234, 88, 12, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(249, 115, 22, 1)',
+                            'rgba(234, 88, 12, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                             title: { display: true, text: '费用 (日元)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                         tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ¥' + context.parsed.y;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>

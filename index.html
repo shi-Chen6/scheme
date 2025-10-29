@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终极关西八日深度之旅 - 交互式攻略</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Kyoto Serenity" (Background: #F8F7F5, Primary Text: #3A3A3A, Accent Red: #C14A4A, Accent Green: #5A8E71, Accent Blue: #4A6E8A, Highlight: #FFFBEB) -->
+    <!-- Application Structure Plan: A top-down, single-page dashboard design. It starts with a trip overview 'Dashboard' (key stats, budget chart, transportation strategy) for at-a-glance info. Below is a day-by-day interactive timeline, navigated by a sticky top bar. This structure was chosen because a chronological flow is the most intuitive for a travel itinerary. The dashboard provides a non-linear entry point for high-level synthesis, while the daily timeline allows for deep, sequential exploration. Interactivity is focused on expanding details (e.g., food, cultural notes) to keep the main view uncluttered and user-driven. -->
+    <!-- Visualization & Content Choices: 1. Report Info: Overall trip costs (transport passes, estimated food, activities). Goal: Inform on budget allocation. Viz: Donut Chart (Chart.js) in the Overview. Interaction: Hover for tooltips with specific costs. Justification: Quick, digestible summary of financial planning. 2. Report Info: Daily schedule breakdown. Goal: Organize time. Viz: Vertical Timeline (HTML/CSS). Interaction: Clickable items reveal detailed modals. Justification: Clearly shows the flow of each day without overwhelming the user initially. 3. Report Info: Transportation strategy (ICOCA vs JR Pass). Goal: Explain complex choice. Viz: Side-by-side comparison cards (HTML/CSS). Interaction: Clear visual separation and icons. Justification: Simplifies a critical but complex part of the plan. 4. Report Info: Must-try foods per city. Goal: Organize culinary goals. Viz: Interactive grid/list. Interaction: Clicking reveals description and photo placeholder. Justification: Creates a fun, task-oriented way to engage with the food recommendations. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; background-color: #F8F7F5; color: #3A3A3A; }
+        .nav-button { transition: all 0.3s ease; }
+        .nav-button.active { background-color: #C14A4A; color: white; }
+        .section-card { background-color: #FFFFFF; border: 1px solid #EAEAEA; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .timeline-item { border-left: 3px solid #4A6E8A; }
+        .timeline-dot { position: absolute; left: -11px; top: 24px; transform: translateY(-50%); width: 20px; height: 20px; border-radius: 50%; background-color: #F8F7F5; border: 3px solid #4A6E8A; }
+        .modal { display: none; }
+        .modal-content { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .chart-container { position: relative; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="modal-container" class="modal fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+        <div class="modal-content section-card w-full max-w-lg max-h-[80vh] overflow-y-auto p-6 md:p-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-2xl font-bold text-gray-800"></h3>
+                <button id="modal-close-btn" class="text-gray-500 hover:text-gray-800 transition">&times;</button>
+            </div>
+            <div id="modal-body" class="prose max-w-none text-gray-600"></div>
+        </div>
+    </div>
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-40 shadow-sm">
+        <nav id="navbar" class="container mx-auto px-4 py-2 flex items-center justify-between flex-wrap">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-xl md:text-2xl font-bold text-[#C14A4A]">关西八日攻略</h1>
+                <a href="xiamen.html" class="text-[#4A6E8A] hover:text-[#C14A4A] transition-colors duration-300">厦门</a>
+                <a href="aomen.html" class="text-[#4A6E8A] hover:text-[#C14A4A] transition-colors duration-300">澳门</a>
+            </div>
+            <div class="flex items-center space-x-1 md:space-x-2 overflow-x-auto py-2">
+                <button data-target="dashboard" class="nav-button active text-sm md:text-base px-3 py-1.5 rounded-full whitespace-nowrap">概览</button>
+            </div>
+        </nav>
+    </header>
+    
+    <main class="container mx-auto p-4 md:p-8">
+        <div id="dashboard" class="scroll-mt-20">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold mb-2">梓涛&高进の关西八日之旅</h2>
+                <p class="text-lg text-gray-600">行程安排计划</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                <div class="section-card p-6 flex flex-col justify-center items-center">
+                    <span class="text-5xl font-bold text-[#4A6E8A]">8</span>
+                    <span class="mt-2 text-lg text-gray-600">天数</span>
+                </div>
+                <div class="section-card p-6 flex flex-col justify-center items-center">
+                    <span class="text-5xl font-bold text-[#5A8E71]">4</span>
+                    <span class="mt-2 text-lg text-gray-600">城市</span>
+                </div>
+                <div class="section-card p-6 flex flex-col justify-center items-center">
+                    <span class="text-3xl font-bold text-[#C14A4A]">特种兵</span>
+                    <span class="mt-2 text-lg text-gray-600">旅行风格</span>
+                </div>
+            </div>
+
+      <!--     <div class="section-card p-6 md:p-8 mb-12">
+                <h3 class="text-2xl font-bold mb-6 text-center">核心作战策略</h3>
+                 <div class="prose max-w-none mx-auto text-lg text-gray-700">
+                    <p>本攻略的核心是将您出色的旅行蓝图转化为一份后勤无忧、体验丰富、效率至上的详尽作战计划。我们已为您处理了关键的行程冲突（如琉璃光院关闭），提供了行李解决方案以实现真正的“特种兵”机动性，并制定了最优交通方案。请将此应用视为您的私人参谋，助您开启一场回味无穷的深度文化体验。</p>
+                </div>
+            </div>--> 
+
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-12">
+                <div class="lg:col-span-3 section-card p-6 md:p-8">
+                    <h3 class="text-2xl font-bold mb-4 text-center">交通方案：ICOCA + JR关西4日券</h3>
+                    <p class="text-center text-gray-600 mb-6">仅供参考</p>
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="flex-1 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                            <h4 class="font-bold text-xl text-blue-800 mb-2">ICOCA卡 💳</h4>
+                            <p class="text-blue-700">您的便捷支付工具。用于京都、大阪的地铁和巴士，以及叡山电车等非JR线路。刷卡即走，告别零钱烦恼。</p>
+                        </div>
+                        <div class="flex-1 p-6 bg-green-50 rounded-lg border border-green-200">
+                            <h4 class="font-bold text-xl text-green-800 mb-2">JR关西地区铁路周游券 (4日) 🚆</h4>
+                            <p class="text-green-700">您的省钱利器。覆盖机场-京都的HARUKA特快，以及第6-8天在京都、神户、大阪间的跨城市移动和USJ交通。</p>
+                        </div>
+                    </div>
+                </div>
+              <!--  <div class="lg:col-span-2 section-card p-6 md:p-8 flex flex-col">
+                    <h3 class="text-2xl font-bold mb-4 text-center">预估费用构成</h3>
+                    <div class="chart-container flex-grow">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
+                </div>-->
+            </div>
+
+             <div class="section-card p-6 md:p-8 mb-12">
+                <h3 class="text-2xl font-bold mb-6 text-center">必尝美食图鉴</h3>
+                <div id="food-gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 text-center">
+                </div>
+            </div>
+
+        </div>
+
+        <div id="itinerary-container">
+        </div>
+        
+    </main>
+
+    <script>
+        const tripData = {
+            budget: {
+                labels: ['交通', '住宿', '餐饮', '门票与活动', '购物'],
+                data: [20000, 48000, 32000, 20000, 15000], 
+                backgroundColor: ['#4A6E8A', '#5A8E71', '#C14A4A', '#E67E22', '#9B59B6'],
+            },
+            foods: [
+                { name: '汤豆腐', city: '京都', emoji: '🍲', description: '岚山和南禅寺地区的名产，以优质水源制作，口感清雅细腻。' },
+                { name: '京菜', city: '京都', emoji: '🍱', description: '京都的家庭式料理，以时令蔬菜为主，口味清淡，注重食材原味。' },
+                { name: '抹茶甜品', city: '宇治', emoji: '🍵', description: '宇治是顶级抹茶的故乡，抹茶芭菲、冰淇淋等都是必尝之选。' },
+                { name: '釜饭', city: '奈良', emoji: '🍚', description: '用小铁锅焖煮的时令米饭，香气扑鼻。' },
+                { name: '神户牛', city: '神户', emoji: '🥩', description: '世界顶级和牛，无论是铁板烧还是牛排，都能体验其入口即化的美妙口感。' },
+                { name: '章鱼烧', city: '大阪', emoji: '🐙', description: '大阪的灵魂小吃，外皮焦香，内里软糯，包裹着大块章鱼。' },
+                { name: '大阪烧', city: '大阪', emoji: '🍳', description: '被称为“日式披萨”，将面糊、卷心菜、肉、海鲜等在铁板上煎制而成。' },
+                { name: '炸串', city: '大阪', emoji: '🍢', description: '将各种食材串起，裹上面糊油炸，蘸着酱汁食用，是新世界的代表美食。' },
+            ],
+            days: [
+                {
+                    day: 1, date: "6月23日 (一)", title: "初抵古都", subtitle: "从关西空港到京都的序章",
+                    mapUrl: "day1.jpg",
+                    timeline: [
+                        { time: "11:25", icon: "🛬", event: "抵达关西机场", details: "预计1.5小时完成入境、取行李。", imageUrl: ""},
+                        { time: "13:00", icon: "💳", event: "交通准备", details: "在JR站购买ICOCA卡，并兑换/购买JR关西地区铁路周游券(4日券)，激活第一天！", imageUrl: ""},
+                        { time: "17:00", icon: "⛩️", event: "傍晚初探：伏见稻荷大社", details: "酒店步行可达！体验薄暮时分游客稀少的千本鸟居，感受神秘静谧的氛围。", imageUrl: "https://www.bring-you.info/wp-content/uploads/2017/08/inari-shrine-28-900x600.jpg"},
+                    ],
+                    userNotes: "提前准备以下物品和事项：护照、签证、行程单、住宿订单、护照复印件、少量日元现金、国际信用卡或银联卡、充电器和转换插头（日本电压100V，插口A型）。到达关西机场后，前往JR西日本售票处（Midori-no-madoguchi）或自动售票机购买ICOCA & HARUKA套票，性价比高，适合外国游客。安卓手机用户建议提前下载Google Maps和NAVITIME Japan Travel（支持离线查询和地铁换乘），并开通好国际漫游或购买日本eSIM/实体SIM卡以便随时导航与支付。注意HARUKA列车座位需要预约，购票时可选择乘车时间和车厢座位号，乘车当天持票和ICOCA卡刷闸进站即可。",
+                    userPhotos: [
+                        "day1-1.jpg",
+                        "day1-2.jpg",
+        
+                    ]
+                },
+                {
+                    day: 2, date: "6月24日 (二)", title: "岚山私语", subtitle: "竹林、小火车与温泉之诗",
+                    mapUrl: "day2.jpg",
+                    timeline:[
+  {
+    time: "10:00",
+    icon: "🚂",
+    event: "嵯峨野小火车抵达",
+    details: "小火车买票最好五号车厢，双数靠窗座位。在嵯峨站下车，准备开启反向游览路线。",
+    imageUrl: "https://cdn-ak.f.st-hatena.com/images/fotolife/k/kyotoside_writer/20181027/20181027232253.jpg"
+  },
+  {
+    time: "10:15-12:30",
+    icon: "🏯",
+    event: "寺院巡礼",
+    details: "爱宕念佛寺（1200尊石佛）→ 祇王寺（苔庭竹林）→ 二尊院（红叶名所）→ 常寂光寺（茅草屋顶与枫叶）",
+    imageUrl: "https://th.bing.com/th/id/R.f5c2eacfa400e8672dd2b38706faacf1?rik=q1e0tVVvNhtlkw&riu=http%3a%2f%2fwww.imamiya.jp%2fharuhanakyoko%2fcolored%2finfo%2fgiou25.jpg&ehk=E3OFsXpnuQL%2f0HK4REo56LCMCWVX0oRJV%2f0qdSPt6vA%3d&risl=&pid=ImgRaw&r=0"
+  },
+  {
+    time: "13:30-14:30",
+    icon: "⛩️",
+    event: "神社与庭园",
+    details: "御发神社（祈求头发健康）→ 大河内山庄（日式庭园与眺望台）→ 野宫神社（求姻缘）",
+    imageUrl: "https://imgs.qunarzz.com/sight/p0/1505/a5/a504d6818e010cea.water.jpg_750x500_4242dff1.jpg"
+  },
+  {
+    time: "14:30-15:20",
+    icon: "🎋",
+    event: "竹林与名刹",
+    details: "竹林小径（避开人流高峰）→ 天龙寺（世界遗产，曹源池庭园必看）",
+    imageUrl: "https://th.bing.com/th/id/OIP.aK_pGojTpoleIWxxSCymZgHaE8?rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "15:30-17:00",
+    icon: "🎨",
+    event: "艺术之旅",
+    details: "祐斋亭（需预约，和纸光影艺术）→ 福田美术馆（岚山主题现代日本画）",
+    imageUrl: "https://th.bing.com/th/id/OIP.8Be97D_iBW8JX2viRVIqtwHaE8?rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "17:00-17:30",
+    icon: "🌉",
+    event: "渡月桥黄昏",
+    details: "漫步标志性桥梁，欣赏保津川与岚山晚霞",
+    imageUrl: "https://cdn.zekkei-japan.jp/images/spots/aflo_AXHA012781.jpg"
+  }
+],
+                    userNotes: "京都岚山小火车 & 爱宕念佛寺 反向游玩攻略 (避开人流版)\n\n" +
+           "核心路线：京都地铁 ➔ 马堀站 ➔ 步行 ➔ トロッコ龟冈站 (坐小火车) ➔ トロッコ嵯峨站 (下火车) ➔ 公交车 ➔ 爱宕念佛寺 (高处) ➔ 步行下山游览\n\n" +
+           "\n详细路线：\n" +
+           "1. 小火车（嵯峨站下）\n" +
+           "2. 爱宕念佛寺\n" +
+           "3. 祗王寺\n" +
+           "4. 二尊院\n" +
+           "5. 常寂光寺\n" +
+           "6. 竹林小径\n" +
+           "7. 天龙寺、宝严院\n" +
+           "8. 祐斋亭\n" +
+           "9. 福田美术馆\n" +
+           "10. 渡月桥",
+                    userPhotos: [
+                        "day2-1.jpg",
+                        "day2-2.jpg",
+                    ]
+                },
+                {
+                    day: 3, date: "6月25日 (三)", title: "京都之北", subtitle: "贵船的水与大原的静",
+                    mapUrl: "day3.jpg",
+                    timeline:[
+  { 
+    time: "09:00", 
+    icon: "🚉", 
+    event: "京都站出发前往大原", 
+    details: "从京都站搭乘京都巴士17路直达大原，开启一天清幽山间之旅。(预计1小时)", 
+  },
+  { 
+    time: "10:00", 
+    icon: "🖼️", 
+    event: "大原双璧：三千院与宝泉院", 
+    details: "游览三千院可爱的童地藏与苔藓庭园，并在宝泉院体验震撼的“额缘庭园”（画框庭园），这是琉璃光院的最佳替代方案！", 
+    imageUrl: "https://th.bing.com/th/id/OIP.qdqv3M9nEeypQLoLvhsJGwHaEl?rs=1&pid=ImgDetMain" 
+  },
+  { 
+    time: "12:30", 
+    icon: "🍱", 
+    event: "大原午餐时光", 
+    details: "在大原山庄或芹生享用当地特色山菜料理或荞麦面，体验京都郊外的地道风味。", 
+  },
+  { 
+    time: "14:00", 
+    icon: "🚃", 
+    event: "前往贵船口", 
+    details: "搭乘京都巴士返回国際会館，再换乘叡山电铁鞍马线，欣赏沿途森林山谷风景，前往贵船神社入口。", 
+    imageUrl: "https://th.bing.com/th/id/OIP.hneCzgJ4yjh7gGAaSyW0oQHaFj?rs=1&pid=ImgDetMain" 
+  },
+  { 
+    time: "15:00", 
+    icon: "💧", 
+    event: "贵船神社探秘", 
+    details: "参拜水神总本宫，体验著名的“水占卜”——将空白签纸放入御神水，签文便会浮现。夏日清凉，贵船溪流涧水声相伴。", 
+    imageUrl: "https://th.bing.com/th/id/OIP.Eij_3ygdvdAx7cbmm_dbOAHaE8?rs=1&pid=ImgDetMain" 
+  },
+  { 
+    time: "17:30", 
+    icon: "🚃", 
+    event: "返回京都站", 
+    details: "乘叡山电铁返回出町柳站，再换京阪电车或地铁回京都站，结束悠闲的一日山水神社之旅。", 
+  }
+],
+                    userNotes: "考虑购买京都地铁巴士一日卡",
+                    userPhotos: [
+                        "day3-1.jpg",
+                        "day3-2.jpg",
+                    ]
+                },
+                {
+                    day: 4, date: "6月26日 (四)", title: "东山漫步", subtitle: "清水、石坂与祇园之韵",
+                    mapUrl: "day4.jpg",
+                    timeline:[
+  {
+    time: "08:30",
+    icon: "🏯",
+    event: "清水寺参拜",
+    details: "世界遗产，京都最具代表性古刹，打卡清水舞台（柯南同款机位）、音羽瀑布，祈愿健康、学业、姻缘。建议9点前抵达避开旅行团，门票300日元。",
+    imageUrl: "https://images.chinatimes.com/newsphoto/2020-11-15/656/BE0300_P_03_02.jpg"
+  },
+  {
+    time: "09:30",
+    icon: "🏘️",
+    event: "三年坂·二年坂漫步",
+    details: "百年町屋石板路，推荐Yojiya吸油纸、抹茶团子，无脸男手办。清晨光影最佳，10点后人潮渐多。",
+    imageUrl: "https://img1.qunarzz.com/travel/d9/1703/32/ffdc30aeac96b8b5.jpg_480x360x95_f03fafa0.jpg"
+  },
+  {
+    time: "10:30",
+    icon: "🗼",
+    event: "法观寺八坂塔打卡",
+    details: "京都古塔代表，五重塔与石板路同框拍摄秘境机位，塔高46米，日本最古老木构塔之一，免费参观。",
+    imageUrl: "https://cdn.zekkei-japan.jp/images/spots/806dac37a79796d33df14d46a0b4220c.jpg"
+  },
+  {
+    time: "11:30",
+    icon: "🌿",
+    event: "宁宁之道&高台寺",
+    details: "宁宁之道竹林小径治愈感满满，和服漫步超出片。高台寺禅意庭园清幽，枯山水美景尽览，门票600日元（现金）。",
+    imageUrl: "https://th.bing.com/th/id/OIP.vrE8YM2CzVJCSasSlVO5ZgHaE7?rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "14:00",
+    icon: "⛩️",
+    event: "八坂神社参拜",
+    details: "京都地标，祈愿姻缘与美容，傍晚灯笼亮起氛围感满满，拍照极佳。",
+    imageUrl: "https://th.bing.com/th/id/OIP.2EVMCv3NsV1TnSBumlaj7QHaE7?rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "15:00",
+    icon: "🏮",
+    event: "花见小路漫步",
+    details: "艺伎回忆录取景地，传统木造街区，弥荣会馆可体验艺伎演出。适合慢慢拍街景写意照。",
+    imageUrl: "https://th.bing.com/th/id/OIP.CVXK2b2VMOWWCLBIsigZBQHaFj?rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "16:00",
+    icon: "🌊",
+    event: "鸭川傍晚散步",
+    details: "定位“祇园四条站”，鸭川三角洲跳乌龟石经典机位，踩‘飞び石’过河拍日系写真，傍晚微光最佳。",
+    imageUrl: "https://th.bing.com/th/id/OIP.wZxDKnF_Qd3T182U_tPD9wHaE8?o=7rm=3&rs=1&pid=ImgDetMain"
+  }
+],
+                    userNotes: "✨亮点：古寺、町屋、神社、艺伎文化、京都母亲河一次集齐，全程步行5km下坡路，不走回头路！\n\n",
+                    userPhotos: [
+                        "day4-1.jpg",
+                        "day4-2.jpg",
+                        "day4-3.jpg",
+                        "day4-4.jpg",
+                    ]
+                },
+                {
+                    day: 5, date: "6月27日 (五)", title: "南部铁三角", subtitle: "千本鸟居、抹茶之乡与神鹿公园",
+                    mapUrl: "day5.jpg",
+                    timeline: [
+  {
+    time: "08:00",
+    icon: "⛩️",
+    event: "伏见稻荷大社｜千本鸟居打卡",
+    details: "清晨8点抵达伏见稻荷，避开人潮，冬日阳光洒落千本鸟居，光影交错，拍照超美！",
+    imageUrl: "https://www.bring-you.info/wp-content/uploads/2017/08/inari-shrine-28-900x600.jpg"
+  },
+  {
+    time: "09:40",
+    icon: "🍵",
+    event: "中村藤吉本店",
+    details: "宇治超人气抹茶甜品店，抹茶面条、抹茶甜品超丰富，环境古色古香，必打卡！",
+  },
+  {
+    time: "10:20",
+    icon: "🎁",
+    event: "伊藤久右卫门",
+    details: "宇治最有名的抹茶伴手礼店，各类抹茶糕点、茶叶必买，适合带回国送人。",
+  },
+  {
+    time: "10:30",
+    icon: "🏯",
+    event: "平等院",
+    details: "世界文化遗产，凤凰堂（¥300）与凤翔馆超值参观，庭园与水景典雅，适合慢逛拍照。",
+    imageUrl: "https://th.bing.com/th/id/OIP.pdQICGC0gHZcS46dyF4jJwHaEL?rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "11:30",
+    icon: "🍦",
+    event: "圆通本店抹茶冰淇淋",
+    details: "宇治名物，抹茶味浓郁细腻，散步小憩最佳选择。",
+  },
+  {
+    time: "11:40",
+    icon: "🌊",
+    event: "宇治川散策",
+    details: "清澈水流与周边日式景致相映成趣，桥上拍摄平等院远景超棒。",
+    imageUrl: "https://th.bing.com/th/id/OIP.nAcjYYvZKcP_7Q0392ziZAHaE8?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "13:00",
+    icon: "🏯",
+    event: "奈良·兴福寺",
+    details: "世界文化遗产，五重塔+东金堂+博物馆，文物超丰富，门票500日元。",
+    imageUrl: "https://th.bing.com/th/id/OIP.W1GCcs_mAGMQFNye6xTmawHaEK?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "14:00",
+    icon: "🎐",
+    event: "奈良·东大寺",
+    details: "世界最大木结构建筑，内藏日本三大佛之一，超震撼！门票600日元。",
+    imageUrl: "https://th.bing.com/th/id/OIP._gpRdcBch5MxLGDU6GommAHaE8?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "15:00",
+    icon: "🦌",
+    event: "奈良公园梅花鹿互动",
+    details: "超萌梅花鹿自由漫步，可购买鹿饼（¥200）喂食，拍摄萌趣瞬间。",
+    imageUrl: "https://th.bing.com/th/id/OIP.fkTBr-8GqZ6yGCm12dflkAHaEl?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "16:00",
+    icon: "🏮",
+    event: "春日大社",
+    details: "奈良最古老神社之一，石灯笼与铜灯笼群景观独特，门票500日元。",
+    imageUrl: "https://s3-ap-northeast-1.amazonaws.com/thegate/2021/01/21/11/47/09/Kasuga-Taisha-Shrine.jpg"
+  },
+  {
+    time: "17:00",
+    icon: "🚆",
+    event: "奈良返回京都",
+    details: "JR奈良站出发，车程45分钟，票价720日元，结束充实古都神社鹿群一日游。",
+  }
+],
+                    userNotes: "购买JR mini pass~！⚠️Tips：🦌奈良：东大寺➡️若草山，春日大社➡️奈良站，这2段可以坐公交。",
+                    userPhotos: [
+                         "day5-1.jpg",
+                    ]
+                },
+                {
+                    day: 6, date: "6月28日 (六)", title: "双城记", subtitle: "神户的优雅与大阪的脉动",
+                    mapUrl: "day6.jpg",
+                    timeline: [
+  {
+    time: "08:00",
+    icon: "🚉",
+    event: "JR二条站出发",
+    details: "从JR二条站搭乘电车前往神户三宫站，预计约1小时，车费970日元左右。",
+  },
+  {
+    time: "09:30",
+    icon: "🏡",
+    event: "神户北野异人馆街",
+    details: "神户必逛西洋风情街，7馆可选，推荐3馆联票（1540日元）畅玩英国馆、洋馆长屋、贝恩之家，开放9:00-18:00，部分周一闭馆。",
+    imageUrl: "https://th.bing.com/th/id/R.0a985535984f55e3b0f6e06024685ddc?rik=49fof4gfQycxFw&riu=http%3a%2f%2fimage.miyouu.com%2f201609%2f57d7a1b64097d.jpg%40!web&ehk=vnMzdmamzdn%2b0MuNDjCuF%2boplM9sj5ZF98oN3y7uhCw%3d&risl=&pid=ImgRaw&r=0"
+  },
+  {
+    time: "11:30",
+    icon: "⛩️",
+    event: "生田神社参拜",
+    details: "免费参观，小而精致，据说祈求恋爱特别灵验，神社本体和绘马墙粉粉嫩嫩超可爱。",
+    imageUrl: "https://www.feel-kobe.jp/app/wp-content/uploads/2021/03/photos_kf1552299383220_4c1jLcFzGxiwhWdJ_0000000035_04-scaled.jpg"
+  },
+  {
+    time: "12:00",
+    icon: "🛍️",
+    event: "三宫中心街闲逛",
+    details: "聚集了日系服饰、杂货品牌、咖啡甜点小店，适合轻松逛逛购物补给。",
+    imageUrl: "https://img.phb123.com/uploads/allimg/230421/66-2304211K5320-L.jpg"
+  },
+  {
+    time: "13:00",
+    icon: "🎎",
+    event: "南京町（唐人街）",
+    details: "热闹非凡的中华街，各种中式点心、烧卖、小笼包、包子铺林立，适合午餐解决顺便逛街。",
+    imageUrl: "https://th.bing.com/th/id/R.d7004ec7175f2816153476fa04fe85c5?rik=VeDQK6LJxMf8cw&riu=http%3a%2f%2fwww.ew9z.com%2fwp-content%2fuploads%2f2016%2f03%2fkobe-2.jpg&ehk=5A0MtRGSBg1NGIIlTjxdNx7%2fWifmDH%2frLYCc7GG2mQ4%3d&risl=&pid=ImgRaw&r=0"
+  },
+  {
+    time: "14:00",
+    icon: "🌊",
+    event: "美利坚公园｜BE KOBE地标",
+    details: "神户港海边公园，著名BE KOBE大字母标志打卡地，海景广阔，拍照超美。",
+    imageUrl: "https://th.bing.com/th/id/OIP.pldE32Ui2A308WQfhnoQlAHaE8?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "14:30",
+    icon: "🗼",
+    event: "神户港塔打卡",
+    details: "外观酷似小蛮腰，夜景尤其漂亮，可视时间情况决定是否登塔。",
+    imageUrl: "https://th.bing.com/th/id/OIP.KMciRTPNELC0wNCTxH6MngHaE5?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "15:00",
+    icon: "🎡",
+    event: "马赛克摩天轮",
+    details: "票价800日元/人，转一圈约十几分钟，可远眺神户港、六甲山，天气好推荐体验。",
+    imageUrl: "https://img1.qunarzz.com/travel/poi/1707/83/50940ae9f0eed837.jpg"
+  },
+  {
+    time: "16:00",
+    icon: "🚆",
+    event: "舞子公园（可选行程）",
+    details: "若时间充裕，搭JR至舞子站，海边大桥与明石海峡美景尽收眼底，日落时分尤佳。",
+    imageUrl: "https://th.bing.com/th/id/OIP.jaZmpDLbGGPhgmg2IcfolwHaE7?o=7rm=3&rs=1&pid=ImgDetMain"
+  },
+  {
+    time: "18:00",
+    icon: "🚉",
+    event: "JR神户/舞子站返回大阪",
+    details: "视时间从神户或舞子站搭JR回大阪，再从大阪转车回JR二条酒店，结束充实神户之行。",
+  },
+  {
+    time: "20:00",
+    icon: "🏨",
+    event: "入住JR二条酒店",
+    details: "回到京都JR二条站旁酒店，结束美好神户漫游。",
+  }
+],
+                    userNotes: "",
+                    userPhotos: [
+                    ]
+                },
+                {
+                    day: 7, date: "6月29日 (日)", title: "大阪特种兵", subtitle: "通票最大化作战",
+                    mapUrl: "day7.jpg",
+                    timeline: [
+  {
+    time: "09:00",
+    icon: "🏯",
+    event: "大阪城公园 & 天守阁",
+    details: "大阪地标名胜，登天守阁俯瞰全城景色，柯南同款打卡机位必拍。天守阁门票600日元（周游卡免费）。",
+    imageUrl: "https://img0.baidu.com/it/u=3137373841,2325259098&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=667"
+  },
+  {
+    time: "10:30",
+    icon: "⛩️",
+    event: "四天王寺",
+    details: "日本现存最古佛教寺院，红柱白墙、五重塔禅意满满，适合静静漫步感受千年古寺氛围。",
+    imageUrl: "https://img0.baidu.com/it/u=2793894185,2189458546&fm=253&fmt=auto&app=138&f=JPEG?w=637&h=422"
+  },
+  {
+    time: "11:30",
+    icon: "🗼",
+    event: "通天阁 & 新世界商店街",
+    details: "大阪复古地标，登通天阁观景台俯瞰市景（周游卡免费），新世界街区昭和风情，章鱼烧、炸串小吃街。",
+    imageUrl: "https://img1.baidu.com/it/u=2786742651,1025906409&fm=253&app=138&f=JPEG?w=500&h=741"
+  },
+  {
+    time: "12:30",
+    icon: "🦁",
+    event: "难波八坂神社",
+    details: "免费参观，超夸张巨型狮子头神社，求学业财运灵验，拍照超带感。",
+    imageUrl: "https://img1.baidu.com/it/u=1045006514,43753580&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=667"
+  },
+  {
+    time: "13:00",
+    icon: "🍢",
+    event: "黑门市场美食街",
+    details: "大阪厨房，推荐现烤扇贝、和牛串、章鱼烧、河豚刺身，部分店铺仅收现金。",
+    imageUrl: "https://img1.baidu.com/it/u=967306573,2255430101&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=638"
+  },
+  {
+    time: "14:30",
+    icon: "🌉",
+    event: "道顿堀 & 心斋桥",
+    details: "大阪最热闹商圈，打卡格力高广告牌、蟹道乐、章鱼烧。心斋桥筋药妆、潮流品牌扫货首选。",
+    imageUrl: "https://wx4.sinaimg.cn/mw690/9ed10d55gy1hxz5y1sievj21rw3jb7wi.jpg"
+  },
+  {
+    time: "17:30",
+    icon: "🎡",
+    event: "HEP FIVE摩天轮",
+    details: "位于梅田商圈，106米高红色摩天轮，车厢内配蓝牙音箱，夜景视野超美，票价600日元（周游卡免费）。",
+    imageUrl: "https://img0.baidu.com/it/u=3474939208,1977224568&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=665"
+  },
+  {
+    time: "18:30",
+    icon: "🌃",
+    event: "梅田蓝天大厦",
+    details: "欣赏大阪夜景最佳观景台，空中庭园展望台360°无敌夜景，可眺望摩天轮与大阪湾。",
+    imageUrl: "https://gips1.baidu.com/it/u=2089336123,3121728230&fm=3074&app=3074&f=JPEG?w=370&h=499&type=normal&func="
+  }
+],
+                    userNotes: "",
+                    userPhotos: [
+                        "day7-1.jpg",
+                        "day7-2.jpg",
+                    ]
+                },
+                 {
+                    day: 8, date: "6月30日 (一)", title: "终极幻想", subtitle: "USJ全攻略与归途",
+                    mapUrl: "day8.jpg",
+                    timeline: [
+  {
+    time: "07:30",
+    icon: "🎟️",
+    event: "环球影城入园排队",
+    details: "提前至7:30到达环球影城门口排队，通常8:00开始检票入园，越早越好抢项目。",
+  },
+  {
+    time: "08:00",
+    icon: "🧙‍♂️",
+    event: "哈利波特魔法世界",
+    details: "开园冲禁忌之旅和鹰马飞行，早上人最少，记得喝杯黄油啤酒，拍照打卡霍格沃茨城堡！",
+    imageUrl: "https://pic.rmb.bdstatic.com/bjh/2da014813b7297462eec05975fdc4b398165.jpeg"
+  },
+  {
+    time: "09:30",
+    icon: "🎮",
+    event: "任天堂世界",
+    details: "优先玩马力欧赛车、耀西冒险，咚奇刚矿车也可一试，记得用App预约整理券入园！",
+    imageUrl: "https://img1.baidu.com/it/u=1610789228,4211516901&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=665"
+  },
+  {
+    time: "11:00",
+    icon: "🍴",
+    event: "吃饭",
+    details: "看实际情况",
+  },
+  {
+    time: "12:30",
+    icon: "🦖",
+    event: "侏罗纪公园",
+    details: "飞天翼龙、乘船游必玩，刺激指数满分，建议自备雨衣以防湿身。",
+    imageUrl: "https://qna.smzdm.com/202402/18/65d1522ebb73b4129.jpg_e1080.jpg"
+  },
+  {
+    time: "13:30",
+    icon: "🎉",
+    event: "环球影城花车游行",
+    details: "提早半小时占位，欣赏华丽的环球影城大巡游，演员互动感十足。",
+    imageUrl: "https://qcloud.dpfile.com/pc/R3DydgkQ2QHhzU2VTNBckZzEsJRb_y9DTYVaOdBHi8HQd0UtTAMJf5gTExyvVyM3.jpg"
+  },
+  {
+    time: "14:30",
+    icon: "🍌",
+    event: "小黄人乐园",
+    details: "调皮闹剧乘车游超可爱，适合拍照打卡，小黄人主题小食也超出片。",
+    imageUrl: "https://img1.baidu.com/it/u=512012781,2579746129&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=658"
+  },
+  {
+    time: "15:30",
+    icon: "🎢",
+    event: "好莱坞美梦乘车游",
+    details: "环球影城招牌过山车，可选正向或倒坐版本，刺激指数爆表，夜景模式也超棒。",
+    imageUrl: "https://p3-pc-sign.douyinpic.com/obj/tos-cn-p-0015/o8RRNYgafAIdzpHABBeznPBQ1iADiACKlOoI72?x-expires=2051647200&x-signature=vzKGqOajubtfVqrW6d0ykajfnNY%3D&from=1516005123"
+  },
+  {
+    time: "17:00",
+    icon: "🎡",
+    event: "水世界 & 小镇亲善村",
+    details: "根据当天排队情况，看水世界表演或前往小镇亲善村玩大白鲨项目，排队短轻松又好玩。",
+    imageUrl: "https://img0.baidu.com/it/u=2763662173,2808054034&fm=253&fmt=auto&app=120&f=JPEG?w=889&h=500"
+  },
+  {
+    time: "18:30",
+    icon: "🎠",
+    event: "环球奇境",
+    details: "最后前往环球奇境，旋转木马、Hello Kitty主题区适合打卡收尾，夜景灯光超梦幻。",
+  },
+  {
+    time: "19:30",
+    icon: "📝",
+    event: "其他项目查漏补缺",
+    details: "闭园前根据现场排队情况，补玩未体验项目，如大白鲨、蜘蛛侠、逆转世界等。",
+  }
+],
+                    userNotes: "📍【前期准备】🧾提前下载APP：下载USJ官方APP，便于查看地图、各项目排队时间⏰提前购票：线上买好门票并绑定在APP上🧳准备物品：携带100日元用于存包，准备好一次性雨衣、充电宝等",
+                    userPhotos: [
+                        "day8-1.jpg",
+                        "day8-2.jpg",
+                    ]
+                }
+            ]
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const navbar = document.getElementById('navbar');
+            const navButtonsContainer = navbar.querySelector('.flex.items-center.space-x-1');
+            const itineraryContainer = document.getElementById('itinerary-container');
+            const foodGallery = document.getElementById('food-gallery');
+            const modalContainer = document.getElementById('modal-container');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            function showModal(title, content) {
+                modalTitle.textContent = title;
+                modalBody.innerHTML = content;
+                modalContainer.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function hideModal() {
+                modalContainer.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+
+            modalCloseBtn.addEventListener('click', hideModal);
+            modalContainer.addEventListener('click', (e) => {
+                if (e.target === modalContainer) {
+                    hideModal();
+                }
+            });
+
+            tripData.foods.forEach(food => {
+                const foodEl = document.createElement('div');
+                foodEl.className = 'flex flex-col items-center cursor-pointer group';
+                foodEl.innerHTML = `
+                    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-4xl mb-2 group-hover:scale-110 transition-transform">${food.emoji}</div>
+                    <span class="font-semibold">${food.name}</span>
+                    <span class="text-sm text-gray-500">${food.city}</span>
+                `;
+                foodEl.addEventListener('click', () => {
+                    showModal(food.name, `<p>${food.description}</p>`);
+                });
+                foodGallery.appendChild(foodEl);
+            });
+            
+            tripData.days.forEach(day => {
+                const dayBtn = document.createElement('button');
+                dayBtn.className = 'nav-button text-sm md:text-base px-3 py-1.5 rounded-full whitespace-nowrap';
+                dayBtn.textContent = `第${day.day}天`;
+                dayBtn.dataset.target = `day-${day.day}`;
+                navButtonsContainer.appendChild(dayBtn);
+
+                const daySection = document.createElement('div');
+                daySection.id = `day-${day.day}`;
+                daySection.className = 'scroll-mt-20 mb-12';
+                
+                let timelineHTML = '';
+                day.timeline.forEach(item => {
+                    const hasImage = item.imageUrl && item.imageUrl !== '';
+                    const imageBlock = hasImage ? `
+                        <div class="md:col-span-1 flex items-center justify-center">
+                            <img src="${item.imageUrl}" alt="${item.event}" class="w-full h-auto rounded-lg shadow-md object-cover max-h-48" onerror="this.style.display='none'">
+                        </div>
+                    ` : '';
+
+                    timelineHTML += `
+                        <div class="relative pl-8 pb-8 timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="grid grid-cols-1 ${hasImage ? 'md:grid-cols-3 md:gap-6' : ''}">
+                                <div class="${hasImage ? 'md:col-span-2' : ''}">
+                                    <p class="text-sm text-gray-500">${item.time}</p>
+                                    <h4 class="font-bold text-lg mb-1 flex items-center">
+                                        <span class="mr-2">${item.icon}</span>
+                                        ${item.event}
+                                    </h4>
+                                    <p class="text-gray-600">${item.details}</p>
+                                </div>
+                                ${imageBlock}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                const mapBlock = `
+                    <div class="my-8">
+                        <h4 class="text-xl font-bold mb-4 text-center text-gray-700">当日路线图参考</h4>
+                        <div class="bg-gray-200 rounded-lg overflow-hidden border">
+                            <img src="${day.mapUrl}" alt="${day.title} 路线图" class="w-full h-auto object-cover" onerror="this.parentElement.style.display='none'">
+                        </div>
+                    </div>
+                `;
+                
+                let photoGalleryHTML = '';
+                if(day.userPhotos && day.userPhotos.length > 0) {
+                    day.userPhotos.forEach(photoUrl => {
+                        photoGalleryHTML += `
+                            <div class="bg-gray-200 rounded-lg aspect-square overflow-hidden">
+                                <img src="${photoUrl}" alt="User Photo" class="w-full h-full object-cover">
+                            </div>
+                        `;
+                    });
+                }
+
+                const userContentBlock = `
+                    <div class="mt-8 border-t pt-8">
+                        <h4 class="text-xl font-bold mb-4 text-center text-gray-700">我的当日详细攻略</h4>
+                        <div class="prose max-w-none text-gray-700 leading-relaxed">
+                           <p>${day.userNotes || '没有详细攻略。'}</p>
+                        </div>
+                        <div class="mt-6">
+                            <h5 class="text-lg font-semibold mb-3 text-center text-gray-600">我的当日相册</h5>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                ${photoGalleryHTML}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                daySection.innerHTML = `
+                    <div class="section-card">
+                        <div class="p-6 md:p-8">
+                            <div class="text-center mb-8">
+                                <p class="text-lg font-semibold text-gray-500">${day.date}</p>
+                                <h3 class="text-3xl font-bold text-[#C14A4A]">${day.title}</h3>
+                                <p class="text-md text-gray-600">${day.subtitle}</p>
+                            </div>
+                            ${mapBlock}
+                            <div>
+                                ${timelineHTML}
+                            </div>
+                            ${userContentBlock}
+                        </div>
+                    </div>
+                `;
+                itineraryContainer.appendChild(daySection);
+            });
+            
+            const buttons = document.querySelectorAll('.nav-button');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.target;
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 80,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+
+            const sections = document.querySelectorAll('[id^="day-"], #dashboard');
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 90) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                buttons.forEach(button => {
+                    button.classList.remove('active');
+                    if(button.dataset.target === current) {
+                        button.classList.add('active');
+                    }
+                })
+            });
+
+            const budgetCtx = document.getElementById('budgetChart').getContext('2d');
+            new Chart(budgetCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: tripData.budget.labels,
+                    datasets: [{
+                        label: '预估费用',
+                        data: tripData.budget.data,
+                        backgroundColor: tripData.budget.backgroundColor,
+                        borderColor: '#F8F7F5',
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    family: "'Noto Sans SC', sans-serif",
+                                    size: 12
+                                },
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
